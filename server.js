@@ -61,105 +61,34 @@ function safeFallback(userText) {
   return "I can help with BrandiQue websites, branding, marketing, or AI solutions 🙂 What do you need?";
 }
 
-async function searchGoogleSheet(query) {
+let sheetCache = [];
+let sheetCacheUpdatedAt = 0;
+const SHEET_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function flattenSheetResults(results) {
+  if (!Array.isArray(results)) return [];
+
+  return results.map((item) => {
+    const data = item?.data && typeof item.data === "object" ? item.data : {};
+    return {
+      sheet: String(item?.sheet || ""),
+      data
+    };
+  });
+}
+
+async function fetchSheetData(query = "") {
   const baseUrl = process.env.GOOGLE_SHEETS_API_URL;
 
   if (!baseUrl) {
     throw new Error("Google Sheets API URL not configured");
   }
 
-  const url = baseUrl + "?q=" + encodeURIComponent(String(query || "").slice(0, 1000));
+  const suffix = query
+    ? "?q=" + encodeURIComponent(String(query).slice(0, 1000))
+    : "?all=1";
 
-  const response = await fetch(url, {
-    method: "GET",
-    signal: AbortSignal.timeout(10000)
-  });
-
-  if (!response.ok) {
-    throw new Error("Google Sheets HTTP " + response.status);
-  }
-
-  const data = await response.json();
-
-  if (!data?.success || !Array.isArray(data.results)) {
-    return [];
-  }
-
-  return data.results.slice(0, 8);
-}
-
-function buildKnowledgeContext(results) {
-  if (!Array.isArray(results) || !results.length) {
-    return "No relevant business information was found in the Google Sheets knowledge source.";
-  }
-
-  return results.map((item, index) => {
-    const sheet = String(item.sheet || "Unknown");
-    const data = item.data && typeof item.data === "object"
-      ? item.data
-      : {};
-
-    const fields = Object.entries(data)
-      .map(([key, value]) => key + ": " + String(value))
-      .join(" | ");
-
-    return "[" + (index + 1) + "] Sheet: " + sheet + " | " + fields;
-  }).join("\n");
-}
-
-async function callOpenRouter(messages, knowledgeContext = "") {
-  if (!process.env.OPENROUTER_API_KEY) {
-    throw new Error("OpenRouter key not configured");
-  }
-
-  const knowledgeBlock = knowledgeContext
-    ? "\n\nLIVE SHEET INFORMATION FOR THIS QUESTION:\n" +
-      knowledgeContext +
-      "\n\nUse this information only when needed to answer the user's question. Do not mention the sheet or internal data."
-    : "";
-
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": "Bearer " + process.env.OPENROUTER_API_KEY,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.SITE_URL || "https://www.brandique.in",
-      "X-Title": "BrandiQue ChatBot"
-    },
-    body: JSON.stringify({
-      model: process.env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free",
-      messages: [
-        {
-          role: "system",
-          content: SYSTEM_PROMPT + knowledgeBlock
-        },
-        ...messages
-      ],
-      max_tokens: 300
-    }),
-    signal: AbortSignal.timeout(12000)
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    const detail = data?.error?.message || `OpenRouter HTTP ${response.status}`;
-    throw new Error(detail);
-  }
-
-  return data?.choices?.[0]?.message?.content?.trim() || "";
-}
-
-async function searchGoogleSheet(query) {
-  const baseUrl = process.env.GOOGLE_SHEETS_API_URL;
-
-  if (!baseUrl) {
-    throw new Error("Google Sheets API URL not configured");
-  }
-
-  const url = baseUrl + "?q=" + encodeURIComponent(String(query || "").slice(0, 1000));
-
-  const response = await fetch(url, {
+  const response = await fetch(baseUrl + suffix, {
     method: "GET",
     signal: AbortSignal.timeout(5000)
   });
@@ -174,7 +103,62 @@ async function searchGoogleSheet(query) {
     return [];
   }
 
-  return data.results.slice(0, 8);
+  return flattenSheetResults(data.results);
+}
+
+async function refreshSheetCache(force = false) {
+  const fresh = sheetCache.length > 0 &&
+    Date.now() - sheetCacheUpdatedAt < SHEET_CACHE_TTL_MS;
+
+  if (!force && fresh) {
+    return sheetCache;
+  }
+
+  try {
+    const results = await fetchSheetData();
+    if (results.length) {
+      sheetCache = results;
+      sheetCacheUpdatedAt = Date.now();
+    }
+  } catch (error) {
+    console.error("Google Sheets cache refresh failed:", error?.message || error);
+  }
+
+  return sheetCache;
+}
+
+function scoreSheetItem(item, query) {
+  const text = Object.entries(item.data || {})
+    .map(([key, value]) => key + " " + String(value))
+    .join(" ")
+    .toLowerCase();
+
+  const words = String(query || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9₹\s.-]/g, " ")
+    .split(/\s+/)
+    .filter((word) => word.length > 2);
+
+  let score = 0;
+
+  for (const word of words) {
+    if (text.includes(word)) score++;
+  }
+
+  return score;
+}
+
+function searchCachedSheet(query) {
+  const ranked = sheetCache
+    .map((item) => ({
+      ...item,
+      score: scoreSheetItem(item, query)
+    }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+
+  return ranked;
 }
 
 function buildKnowledgeContext(results) {
@@ -183,8 +167,7 @@ function buildKnowledgeContext(results) {
   }
 
   return results.map((item, index) => {
-    const data = item.data && typeof item.data === "object" ? item.data : {};
-    const fields = Object.entries(data)
+    const fields = Object.entries(item.data || {})
       .map(([key, value]) => key + ": " + String(value))
       .join(" | ");
 
@@ -210,10 +193,10 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
         (message.role === "user" || message.role === "assistant") &&
         typeof message.content === "string"
     )
-    .slice(-8)
+    .slice(-6)
     .map((message) => ({
       role: message.role,
-      content: message.content.slice(0, 4000)
+      content: message.content.slice(0, 3500)
     }));
 
   if (!messages.length) {
@@ -225,7 +208,7 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
     .find((message) => message.role === "user");
 
   try {
-    // Fast path: use the chatbot's existing built-in knowledge first.
+    // Fast path: the existing built-in BrandiQue knowledge answers the question.
     const firstAnswer = cleanProviderOutput(
       await callOpenRouter(messages)
     );
@@ -234,12 +217,13 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
       return res.json({ message: firstAnswer });
     }
 
-    // Slow path only when built-in knowledge is insufficient.
-    let sheetResults = [];
-    try {
-      sheetResults = await searchGoogleSheet(latestUserMessage?.content || "");
-    } catch (sheetError) {
-      console.error("Google Sheets request failed:", sheetError?.message || sheetError);
+    // Only after the built-in knowledge is insufficient, search the local Sheet cache.
+    let sheetResults = searchCachedSheet(latestUserMessage?.content || "");
+
+    // If cache is not ready, refresh it once. This normally happens only after startup.
+    if (!sheetResults.length) {
+      await refreshSheetCache(true);
+      sheetResults = searchCachedSheet(latestUserMessage?.content || "");
     }
 
     const knowledgeContext = buildKnowledgeContext(sheetResults);
@@ -266,4 +250,8 @@ app.get("*splat", (_req, res) => {
 
 app.listen(PORT, () => {
   console.log("BrandiQue ChatBot running on port " + PORT);
+
+  // Warm the Sheet cache in the background so fallback questions stay fast.
+  refreshSheetCache(true);
+  setInterval(() => refreshSheetCache(true), SHEET_CACHE_TTL_MS);
 });
