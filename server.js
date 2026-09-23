@@ -19,7 +19,7 @@ const apiLimiter = rateLimit({
   message: { error: "Too many requests. Please try again in a minute." }
 });
 
-const SYSTEM_PROMPT = \`You are Darling, the official AI assistant for BrandiQue Web Solutions.
+const SYSTEM_PROMPT = `You are Darling, the official AI assistant for BrandiQue Web Solutions.
 
 CORE BEHAVIOR
 - Act like a smart, friendly human consultant for BrandiQue.
