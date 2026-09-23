@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090909">
+  <meta name="description" content="BrandiQue AI Assistant">
+  <title>BrandiQue AI Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+
+    <header class="topbar">
+      <a class="brand" href="https://www.brandique.in" target="_blank" rel="noreferrer">
+        <span class="brand-mark">B</span>
+        <span class="brand-copy">
+          <strong>BrandiQue</strong>
+          <small>Web Solutions</small>
+        </span>
+      </a>
+      <div class="top-actions">
+        <span class="status-pill"><i></i> AI Online</span>
+        <a href="https://www.brandique.in" target="_blank" rel="noreferrer">Visit Website ↗</a>
+      </div>
+    </header>
+
+    <main class="chat-layout">
+      <aside class="hero-panel">
+        <div class="eyebrow">BRANDIQUE AI</div>
+        <h1>Build better.<br><span>Move faster.</span></h1>
+        <p>Ask about websites, WordPress, branding, SEO, AI automation, chatbots and e-commerce solutions.</p>
+
+        <div class="quick-grid">
+          <button data-prompt="What services does BrandiQue offer?">Services</button>
+          <button data-prompt="I need a website for my business. What do you recommend?">Website</button>
+          <button data-prompt="How can BrandiQue help with SEO and digital marketing?">SEO & Marketing</button>
+          <button data-prompt="I want an AI chatbot or automation. What can you build?">AI & Automation</button>
+        </div>
+
+        <div class="trust-note">
+          <span class="mini-icon">✦</span>
+          <div>
+            <strong>Human-ready assistance</strong>
+            <small>For project-specific quotes, the BrandiQue team can help with the next step.</small>
+          </div>
+        </div>
+      </aside>
+
+      <section class="chat-card" aria-label="BrandiQue chat">
+        <div class="chat-head">
+          <div class="agent">
+            <div class="agent-avatar">B<span></span></div>
+            <div>
+              <strong>Darling</strong>
+              <small>BrandiQue AI Assistant · Online</small>
+            </div>
+          </div>
+          <button id="clearBtn" class="icon-btn" title="Clear chat" aria-label="Clear chat">⌫</button>
+        </div>
+
+        <div id="messages" class="messages"></div>
+
+        <div class="suggestions" id="suggestions">
+          <button data-prompt="Tell me about BrandiQue">About BrandiQue</button>
+          <button data-prompt="What kind of websites do you build?">Web development</button>
+          <button data-prompt="I need a custom quote">Get a quote</button>
+        </div>
+
+        <form id="chatForm" class="composer">
+          <textarea id="input" rows="1" placeholder="Message BrandiQue…" autocomplete="off"></textarea>
+          <button id="sendBtn" type="submit" aria-label="Send message">
+            <span>↑</span>
+          </button>
+        </form>
+        <div class="composer-meta">
+          <span>Enter to send · Shift + Enter for new line</span>
+          <span>Powered by OpenRouter</span>
+        </div>
+      </section>
+    </main>
+
+    <footer>BrandiQue Web Solutions · <a href="https://www.brandique.in" target="_blank" rel="noreferrer">brandique.in</a></footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
