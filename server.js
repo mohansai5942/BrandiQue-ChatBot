@@ -400,7 +400,7 @@ const PROVIDER_ORDER = String(process.env.PROVIDER_ORDER || "openrouter,gemini")
 
 const PROVIDER_COOLDOWN_MS = Number(process.env.PROVIDER_COOLDOWN_MS || 60 * 60 * 1000);
 const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || 6000);
-const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 7000);
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 12000);
 
 const providerCooldownUntil = {
   openrouter: 0,
@@ -656,7 +656,9 @@ async function callGemini(conversationMessages, knowledgeContext = "", memory = 
         },
         contents: buildGeminiContents(conversationMessages),
         generationConfig: {
-          temperature: 0.4,
+          thinkingConfig: {
+            thinkingLevel: "low"
+          },
           maxOutputTokens: 300
         }
       })
