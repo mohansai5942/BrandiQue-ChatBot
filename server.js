@@ -703,58 +703,56 @@ async function callGemini(conversationMessages, knowledgeContext = "", memory = 
   const models = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS]
     .filter((model, index, list) => model && list.indexOf(model) === index);
 
-  const controllers = new Map();
   const errors = [];
-  let launched = 0;
+  const controllers = models.map(() => new AbortController());
   let settled = false;
 
+  const attempts = models.map((model, index) =>
+    callGeminiModel(
+      model,
+      conversationMessages,
+      knowledgeContext,
+      memory,
+      controllers[index].signal
+    )
+      .then((content) => ({ ok: true, content, model }))
+      .catch((error) => ({
+        ok: false,
+        model,
+        error: error?.message || String(error)
+      }))
+  );
+
   return new Promise((resolve, reject) => {
-    const finishSuccess = (content) => {
-      if (settled) return;
-      settled = true;
-      for (const controller of controllers.values()) controller.abort();
-      resolve(content);
-    };
+    let completed = 0;
 
-    const finishFailure = () => {
-      if (settled || launched < models.length) return;
-      settled = true;
-      reject(new Error(errors.join(" | ") || "Gemini request failed"));
-    };
+    attempts.forEach((attempt) => {
+      attempt.then((result) => {
+        if (settled) return;
 
-    const launchNext = () => {
-      if (settled || launched >= models.length) {
-        finishFailure();
-        return;
-      }
+        completed++;
 
-      const model = models[launched++];
-      const controller = new AbortController();
-      controllers.set(model, controller);
+        if (result.ok && result.content) {
+          settled = true;
 
-      callGeminiModel(model, conversationMessages, knowledgeContext, memory, controller.signal)
-        .then((content) => finishSuccess(content))
-        .catch((error) => {
-          if (settled) return;
+          controllers.forEach((controller, index) => {
+            if (models[index] !== result.model) controller.abort();
+          });
 
-          const message = error?.message || String(error);
-          errors.push(model + ": " + message);
-          console.error("gemini model " + model + " failed:", message);
+          console.log("Gemini response served by:", result.model);
+          resolve(result.content);
+          return;
+        }
 
-          controllers.delete(model);
-          finishFailure();
+        errors.push(result.model + ": " + result.error);
+        console.error("gemini model " + result.model + " failed:", result.error);
 
-          if (!settled) launchNext();
-        });
-
-      if (launched < models.length) {
-        setTimeout(() => {
-          if (!settled) launchNext();
-        }, PROVIDER_FAILOVER_DELAY_MS);
-      }
-    };
-
-    launchNext();
+        if (completed === attempts.length) {
+          settled = true;
+          reject(new Error(errors.join(" | ") || "All Gemini models failed"));
+        }
+      });
+    });
   });
 }
 
@@ -792,7 +790,7 @@ async function callProviderWithFallback(conversationMessages, knowledgeContext =
       } else if (provider === "openrouter" && /HTTP 408|HTTP 5\d\d|timeout|temporarily unavailable/i.test(message)) {
         markProviderCooldown(provider, message);
       } else if (provider === "gemini" && /HTTP 429|quota|rate limit/i.test(message)) {
-        console.error("Gemini model-level limit reached; another configured Gemini model was attempted.");
+        console.error("Gemini model-level limit reached; all configured Gemini models were attempted.");
       } else if (provider === "gemini" && /HTTP 408|HTTP 5\d\d|timeout|temporarily unavailable/i.test(message)) {
         console.error("Gemini transient failure; another configured Gemini model was attempted.");
       }
