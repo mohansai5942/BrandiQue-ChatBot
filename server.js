@@ -488,8 +488,13 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
       let sheetResults = searchCachedSheet(userText);
 
       if (!sheetResults.length) {
-        await refreshSheetCache(true);
-        sheetResults = searchCachedSheet(userText);
+        try {
+          sheetResults = await fetchSheetData(userText);
+        } catch (sheetError) {
+          console.error("Google Sheets direct query failed:", sheetError?.message || sheetError);
+          await refreshSheetCache(true);
+          sheetResults = searchCachedSheet(userText);
+        }
       }
 
       if (sheetResults.length) {
@@ -528,8 +533,13 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
     let sheetResults = searchCachedSheet(userText);
 
     if (!sheetResults.length) {
-      await refreshSheetCache(true);
-      sheetResults = searchCachedSheet(userText);
+      try {
+        sheetResults = await fetchSheetData(userText);
+      } catch (sheetError) {
+        console.error("Google Sheets direct query failed:", sheetError?.message || sheetError);
+        await refreshSheetCache(true);
+        sheetResults = searchCachedSheet(userText);
+      }
     }
 
     if (sheetResults.length) {
