@@ -400,7 +400,12 @@ const PROVIDER_ORDER = String(process.env.PROVIDER_ORDER || "openrouter,gemini")
 
 const PROVIDER_COOLDOWN_MS = Number(process.env.PROVIDER_COOLDOWN_MS || 60 * 60 * 1000);
 const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || 6000);
-const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 12000);
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 15000);
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const GEMINI_FALLBACK_MODELS = String(process.env.GEMINI_FALLBACK_MODELS || "gemini-3.5-flash-lite,gemini-3.6-flash")
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
 
 const providerCooldownUntil = {
   openrouter: 0,
@@ -627,7 +632,9 @@ async function callGemini(conversationMessages, knowledgeContext = "", memory = 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
 
-  const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+  const models = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS]
+    .filter((model, index, list) => model && list.indexOf(model) === index);
+
   const memoryContext = [
     memory.name ? "User name: " + memory.name : "",
     memory.lastWebsiteType ? "Current website type in conversation: " + memory.lastWebsiteType : "",
@@ -640,52 +647,64 @@ async function callGemini(conversationMessages, knowledgeContext = "", memory = 
       ? "\n\nADDITIONAL VERIFIED BRANDIQUE KNOWLEDGE\nUse these facts when relevant. Do not mention the source.\n" + knowledgeContext
       : "");
 
-  const response = await fetchJson(
-    "https://generativelanguage.googleapis.com/v1beta/models/" +
-      encodeURIComponent(model) +
-      ":generateContent",
-    {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": apiKey,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemMessage }]
-        },
-        contents: buildGeminiContents(conversationMessages),
-        generationConfig: {
-          thinkingConfig: {
-            thinkingLevel: "low"
+  const errors = [];
+
+  for (const model of models) {
+    try {
+      const response = await fetchJson(
+        "https://generativelanguage.googleapis.com/v1beta/models/" +
+          encodeURIComponent(model) +
+          ":generateContent",
+        {
+          method: "POST",
+          headers: {
+            "x-goog-api-key": apiKey,
+            "Content-Type": "application/json"
           },
-          maxOutputTokens: 300
-        }
-      })
-    },
-    GEMINI_TIMEOUT_MS
-  );
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: systemMessage }]
+            },
+            contents: buildGeminiContents(conversationMessages),
+            generationConfig: {
+              thinkingConfig: {
+                thinkingLevel: "low"
+              },
+              maxOutputTokens: 300
+            }
+          })
+        },
+        GEMINI_TIMEOUT_MS
+      );
 
-  const data = response.data || {};
-  if (!response.ok) {
-    const providerMessage =
-      data?.error?.message ||
-      data?.error?.status ||
-      "Gemini request failed";
-    throw new Error("Gemini HTTP " + response.status + ": " + providerMessage);
+      const data = response.data || {};
+      if (!response.ok) {
+        const providerMessage =
+          data?.error?.message ||
+          data?.error?.status ||
+          "Gemini request failed";
+        throw new Error("Gemini HTTP " + response.status + ": " + providerMessage);
+      }
+
+      const content = data?.candidates?.[0]?.content?.parts
+        ?.map((part) => String(part?.text || ""))
+        .join("")
+        .trim();
+
+      if (!content) {
+        const reason = data?.candidates?.[0]?.finishReason || "no message content";
+        throw new Error("Gemini returned " + reason);
+      }
+
+      return content;
+    } catch (error) {
+      const message = error?.message || String(error);
+      errors.push(model + ": " + message);
+      console.error("gemini model " + model + " failed:", message);
+    }
   }
 
-  const content = data?.candidates?.[0]?.content?.parts
-    ?.map((part) => String(part?.text || ""))
-    .join("")
-    .trim();
-
-  if (!content) {
-    const reason = data?.candidates?.[0]?.finishReason || "no message content";
-    throw new Error("Gemini returned " + reason);
-  }
-
-  return content;
+  throw new Error(errors.join(" | ") || "Gemini request failed");
 }
 
 async function callProviderWithFallback(conversationMessages, knowledgeContext = "", memory = {}) {
@@ -716,7 +735,10 @@ async function callProviderWithFallback(conversationMessages, knowledgeContext =
       const message = error?.message || String(error);
       errors.push(provider + ": " + message);
 
-      if (/HTTP 429|HTTP 408|HTTP 5\d\d|timeout|temporarily unavailable|quota|rate limit/i.test(message)) {
+      if (/OpenRouter HTTP 429:.*free-models-per-day|OpenRouter HTTP 429:.*daily/i.test(message)) {
+        providerCooldownUntil[provider] = Date.now() + 24 * 60 * 60 * 1000;
+        console.error(provider + " disabled until daily free quota is expected to reset.");
+      } else if (/HTTP 429|HTTP 408|HTTP 5\d\d|timeout|temporarily unavailable|quota|rate limit/i.test(message)) {
         markProviderCooldown(provider, message);
       }
 
@@ -734,7 +756,8 @@ app.get("/api/health", (_req, res) => {
     providers: PROVIDER_ORDER,
     openrouterConfigured: Boolean(process.env.OPENROUTER_API_KEY),
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
-    geminiModel: process.env.GEMINI_MODEL || "gemini-3.6-flash",
+    geminiModel: GEMINI_MODEL,
+    geminiFallbackModels: GEMINI_FALLBACK_MODELS,
     memory: "conversation"
   });
 });
@@ -802,6 +825,6 @@ app.listen(PORT, () => {
   console.log("BrandiQue ChatBot running on port " + PORT);
   console.log("Provider order:", PROVIDER_ORDER.join(" -> "));
   console.log("OpenRouter model:", process.env.OPENROUTER_MODEL || "openrouter/free");
-  console.log("Gemini model:", process.env.GEMINI_MODEL || "gemini-3.6-flash");
+  console.log("Gemini models:", [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS].join(" -> "));
   console.log("Google Sheets knowledge:", process.env.GOOGLE_SHEETS_API_URL ? "enabled on demand" : "not configured");
 });
