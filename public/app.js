@@ -5,7 +5,30 @@ const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
 const suggestions = document.getElementById("suggestions");
 
-let history = [];
+const STORAGE_KEY = "brandique_chat_history_v2";
+let history = loadHistory();
+
+function loadHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    if (!Array.isArray(saved)) return [];
+    return saved
+      .filter((message) =>
+        message &&
+        (message.role === "user" || message.role === "assistant") &&
+        typeof message.content === "string"
+      )
+      .slice(-40);
+  } catch (_error) {
+    return [];
+  }
+}
+
+function saveHistory() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-40)));
+  } catch (_error) {}
+}
 
 function scrollBottom() {
   messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -39,7 +62,9 @@ function formatMessage(value) {
   const div = document.createElement("div");
   div.textContent = value;
   const escaped = div.innerHTML;
-  return escaped.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>").replace(/(^|\n)\s*[•*]\s+/g, "$1");
+  return escaped
+    .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/(^|\n)\s*[•*]\s+/g, "$1");
 }
 
 function setLoading(loading) {
@@ -54,6 +79,8 @@ async function sendMessage(text) {
   suggestions.style.display = "none";
   addMessage("user", trimmed);
   history.push({ role: "user", content: trimmed });
+  saveHistory();
+
   input.value = "";
   input.style.height = "auto";
   setLoading(true);
@@ -64,7 +91,7 @@ async function sendMessage(text) {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history })
+      body: JSON.stringify({ messages: history.slice(-20) })
     });
 
     const data = await response.json();
@@ -73,6 +100,7 @@ async function sendMessage(text) {
     if (!response.ok) throw new Error(data?.error || "Unable to get a response.");
 
     history.push({ role: "assistant", content: data.message });
+    saveHistory();
     addMessage("assistant", data.message);
   } catch (error) {
     typing.remove();
@@ -106,6 +134,7 @@ document.querySelectorAll("[data-prompt]").forEach((btn) => {
 
 clearBtn.addEventListener("click", () => {
   history = [];
+  localStorage.removeItem(STORAGE_KEY);
   messagesEl.innerHTML = "";
   suggestions.style.display = "flex";
   addMessage(
@@ -116,8 +145,21 @@ clearBtn.addEventListener("click", () => {
   input.focus();
 });
 
-addMessage(
-  "assistant",
-  "I’m Darling, BrandiQue’s AI assistant. Ask me about our services, websites, branding, SEO, AI automation or e-commerce solutions.",
-  { welcome: true }
-);
+function restoreChat() {
+  if (!history.length) {
+    addMessage(
+      "assistant",
+      "I’m Darling, BrandiQue’s AI assistant. Ask me about our services, websites, branding, SEO, AI automation or e-commerce solutions.",
+      { welcome: true }
+    );
+    return;
+  }
+
+  suggestions.style.display = "none";
+
+  for (const message of history) {
+    addMessage(message.role, message.content);
+  }
+}
+
+restoreChat();
