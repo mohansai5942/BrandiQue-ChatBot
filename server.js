@@ -367,13 +367,30 @@ function buildDirectSheetAnswer(results, userText) {
   if (!Array.isArray(results) || !results.length) return "";
 
   const question = String(userText || "").toLowerCase();
-  const founderQuestion = /\b(founder|owner|ceo|director)\b/.test(question);
+  const founderQuestion = /\b(founder|owner|ceo|director)\b/i.test(question);
 
   if (founderQuestion) {
     for (const item of results) {
-      for (const [key, value] of Object.entries(item.data || {})) {
+      const entries = Object.entries(item.data || {});
+
+      for (const [key, value] of entries) {
         if (/founder|owner|ceo|director/i.test(key) && String(value).trim()) {
           return "BrandiQue Web Solutions was founded by " + String(value).trim() + ".";
+        }
+      }
+
+      const rowText = entries
+        .map(([key, value]) => key + ": " + String(value))
+        .join(" ");
+
+      if (/founder|owner|ceo|director/i.test(rowText)) {
+        const preferred = entries.find(([key, value]) =>
+          /answer|response|details|description|content|value|name/i.test(key) &&
+          String(value).trim()
+        );
+
+        if (preferred) {
+          return String(preferred[1]).trim();
         }
       }
     }
@@ -389,10 +406,9 @@ function buildDirectSheetAnswer(results, userText) {
     )
     .filter(Boolean);
 
-  return useful.length
-    ? useful.join("\n")
-    : "";
+  return useful.length ? useful.join("\n") : "";
 }
+
 
 async function callOpenRouter(conversationMessages, knowledgeContext = "") {
   const apiKey = process.env.OPENROUTER_API_KEY;
