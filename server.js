@@ -76,12 +76,11 @@ async function callOpenRouter(messages) {
       "X-Title": "BrandiQue ChatBot"
     },
     body: JSON.stringify({
-      model: process.env.OPENROUTER_MODEL || "openrouter/free",
+      model: process.env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         ...messages
       ],
-      temperature: 0.25,
       max_tokens: 500
     }),
     signal: AbortSignal.timeout(25000)
@@ -90,7 +89,8 @@ async function callOpenRouter(messages) {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error("OpenRouter request failed");
+    const detail = data?.error?.message || `OpenRouter HTTP ${response.status}`;
+    throw new Error(detail);
   }
 
   return data?.choices?.[0]?.message?.content?.trim() || "";
@@ -131,7 +131,7 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
       return res.json({ message: content });
     }
   } catch (error) {
-    console.error("OpenRouter request failed");
+    console.error("OpenRouter request failed:", error?.message || error);
   }
 
   return res.json({
