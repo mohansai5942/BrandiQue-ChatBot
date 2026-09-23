@@ -16,9 +16,9 @@ function addMessage(role, content, options = {}) {
   row.className = `message-row ${role}`;
 
   if (role === "assistant" && options.welcome) {
-    row.innerHTML = `<div class="bubble welcome"><h2>How can I help?</h2><p>${escapeHtml(content)}</p></div>`;
+    row.innerHTML = `<div class="bubble welcome"><h2>How can I help?</h2><p>${formatMessage(content)}</p></div>`;
   } else {
-    row.innerHTML = `<div class="bubble">${escapeHtml(content)}</div>`;
+    row.innerHTML = `<div class="bubble">${formatMessage(content)}</div>`;
   }
 
   messagesEl.appendChild(row);
@@ -35,10 +35,11 @@ function addTyping() {
   return row;
 }
 
-function escapeHtml(value) {
+function formatMessage(value) {
   const div = document.createElement("div");
   div.textContent = value;
-  return div.innerHTML;
+  const escaped = div.innerHTML;
+  return escaped.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>").replace(/(^|\n)\s*[•*]\s+/g, "$1");
 }
 
 function setLoading(loading) {
