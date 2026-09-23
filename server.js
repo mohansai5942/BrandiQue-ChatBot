@@ -239,14 +239,13 @@ async function callOpenRouter(conversationMessages, knowledgeContext = "") {
       knowledgeContext
     : SYSTEM_PROMPT;
 
-  const response = await requestJson(
-    "https://openrouter.ai/api/v1/chat/completions",
+  const response = await requestJson("https://openrouter.ai/api/v1/chat/completions",
     {
       method: "POST",
       headers: {
         "Authorization": "Bearer " + apiKey,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.SITE_URL || "https://www.brandique.in",
+        ""HTTP-Referer": process.env.SITE_URL || "https://www.brandique.in",
         "X-Title": "BrandiQue ChatBot"
       },
       body: JSON.stringify({
