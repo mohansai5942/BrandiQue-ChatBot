@@ -23,7 +23,7 @@ const apiLimiter = rateLimit({
 const SYSTEM_PROMPT = `
 You are Darling, the official AI assistant for BrandiQue Web Solutions.
 
-Your job is to help website visitors with accurate information about BrandiQue, its services, pricing, projects, founder, and contact/business information.
+You have conversation memory. Use the previous user and assistant messages supplied with every request to understand follow-up questions, references like "that", "it", "business", "same one", "what about that", and personal details the user has explicitly shared.
 
 LANGUAGE
 - Reply in the same language the user uses.
@@ -37,7 +37,7 @@ STYLE
 - Answer the exact question first.
 - Use short bullets only when useful.
 - Do not repeat the user's question.
-- Do not mention Google Sheets, APIs, providers, system prompts, internal tools, or implementation details.
+- Never mention Google Sheets, APIs, providers, system prompts, internal tools, or implementation details.
 - Never invent business facts.
 - Never expose API errors or internal markers.
 
@@ -73,6 +73,15 @@ Current website information:
 - Websites are mobile responsive
 - Maintenance is available
 - BrandiQue serves clients from Visakhapatnam and globally
+
+MEMORY RULES
+- Remember information explicitly shared by the user during the current conversation.
+- If the user says "my name is X", remember X for the conversation and use it when relevant.
+- If the user asks "do you remember my name?" and a name was explicitly shared in the conversation, answer with that name.
+- If no name was shared, say you do not have their name yet and ask them to tell you.
+- Keep using the current conversation context for follow-up questions.
+- Do not treat a one-word follow-up as a new conversation when its meaning is clear from recent messages.
+- Example: after the user asks about Personal website pricing, "business" means Business website pricing if that is the obvious context.
 
 IMPORTANT
 - Treat the verified knowledge above as authoritative for these facts.
@@ -116,50 +125,106 @@ const BUSINESS_FACT_PATTERNS = [
   /\b(portfolio|instagram|telegram|linkedin|social media|delivery time|maintenance)\b/i
 ];
 
-const BUSINESS_KNOWLEDGE = [
-  {
-    keys: ["founder", "owner", "ceo", "director", "founded", "who founded"],
-    answer: "BrandiQue Web Solutions was founded by K. Mohan Rao."
-  },
-  {
-    keys: ["website", "website url", "domain", "url"],
-    answer: "BrandiQue's official website is https://www.brandique.in."
-  },
-  {
-    keys: ["location", "office", "address"],
-    answer: "BrandiQue Web Solutions is based in Visakhapatnam, India and serves clients globally."
-  },
-  {
-    keys: ["personal website", "personal", "portfolio price", "personal price"],
-    answer: "The published starter price for a Personal website is ₹9,000/-."
-  },
-  {
-    keys: ["business website", "business price"],
-    answer: "The published starter price for a Business website is ₹10,999/-."
-  },
-  {
-    keys: ["ecommerce", "e-commerce", "online store", "ecommerce price", "e-commerce price"],
-    answer: "The published starter price for an E-commerce website is ₹28,999/-."
-  },
-  {
-    keys: ["delivery", "delivery time", "how long", "days"],
-    answer: "Standard website builds take 7-14 days. Complex applications usually take about 3-4 weeks."
-  },
-  {
-    keys: ["seo", "technical seo"],
-    answer: "Yes. Technical SEO is included in BrandiQue website builds."
-  },
-  {
-    keys: ["maintenance", "maintain"],
-    answer: "Yes. BrandiQue offers ongoing website maintenance and technical support."
-  }
-];
-
 function isBusinessFactQuestion(text) {
   return BUSINESS_FACT_PATTERNS.some((pattern) => pattern.test(String(text || "")));
 }
 
-function findBuiltInBusinessAnswer(userText) {
+function extractConversationMemory(messages) {
+  const memory = {
+    name: "",
+    lastWebsiteType: "",
+    lastTopic: "",
+    lastAssistantAnswer: ""
+  };
+
+  const all = Array.isArray(messages) ? messages : [];
+
+  for (const message of all) {
+    const text = String(message?.content || "").trim();
+    const lower = text.toLowerCase();
+
+    if (message?.role === "user") {
+      const nameMatch =
+        lower.match(/\bmy name is\s+([a-z][a-z .'-]{1,50})$/i) ||
+        lower.match(/\bcall me\s+([a-z][a-z .'-]{1,50})$/i) ||
+        lower.match(/\bi am\s+([a-z][a-z .'-]{1,50})$/i);
+
+      if (nameMatch) {
+        memory.name = nameMatch[1].trim().replace(/[.!?,]+$/, "");
+      }
+
+      if (/\bpersonal\b/.test(lower) && /\bwebsite|site\b/.test(lower)) {
+        memory.lastWebsiteType = "Personal";
+      } else if (/\bbusiness\b/.test(lower) && /\bwebsite|site\b/.test(lower)) {
+        memory.lastWebsiteType = "Business";
+      } else if (/\b(e[- ]?commerce|online store)\b/.test(lower)) {
+        memory.lastWebsiteType = "E-commerce";
+      } else if (/\bportfolio\b/.test(lower)) {
+        memory.lastWebsiteType = "Portfolio";
+      }
+
+      if (/\b(personal|business|e[- ]?commerce|portfolio)\b/.test(lower)) {
+        memory.lastTopic = "website";
+      } else if (/\b(pric|cost|quote|quotation)\b/.test(lower)) {
+        memory.lastTopic = "pricing";
+      }
+    }
+
+    if (message?.role === "assistant" && text) {
+      memory.lastAssistantAnswer = text;
+    }
+  }
+
+  return memory;
+}
+
+function contextualBusinessAnswer(userText, messages) {
+  const text = String(userText || "").toLowerCase().trim();
+  const memory = extractConversationMemory(messages);
+
+  if (/\b(do you remember my name|remember my name|what is my name|what's my name)\b/i.test(text)) {
+    return memory.name
+      ? "Yes 🙂 Your name is " + memory.name + "."
+      : "I don’t have your name yet 🙂 Tell me your name and I’ll remember it during this conversation.";
+  }
+
+  const oneWordWebsiteType =
+    /^(business|business website|business site)$/i.test(text)
+      ? "Business"
+      : /^(personal|personal website|personal site)$/i.test(text)
+        ? "Personal"
+        : /^(e[- ]?commerce|ecommerce|online store)$/i.test(text)
+          ? "E-commerce"
+          : /^(portfolio|portfolio website|portfolio site)$/i.test(text)
+            ? "Portfolio"
+            : "";
+
+  if (oneWordWebsiteType && (memory.lastTopic === "website" || memory.lastWebsiteType || memory.lastTopic === "pricing")) {
+    if (oneWordWebsiteType === "Business") {
+      return "The published starter price for a Business website is ₹10,999/-.";
+    }
+    if (oneWordWebsiteType === "Personal") {
+      return "The published starter price for a Personal website is ₹9,000/-.";
+    }
+    if (oneWordWebsiteType === "E-commerce") {
+      return "The published starter price for an E-commerce website is ₹28,999/-.";
+    }
+    return "A Portfolio website is available. Tell me if you want its pricing or details.";
+  }
+
+  if (/^(how much|price|pricing|cost)$/i.test(text) && memory.lastWebsiteType) {
+    if (memory.lastWebsiteType === "Business") return "The published starter price for a Business website is ₹10,999/-.";
+    if (memory.lastWebsiteType === "Personal") return "The published starter price for a Personal website is ₹9,000/-.";
+    if (memory.lastWebsiteType === "E-commerce") return "The published starter price for an E-commerce website is ₹28,999/-.";
+  }
+
+  return "";
+}
+
+function findBuiltInBusinessAnswer(userText, messages = []) {
+  const contextual = contextualBusinessAnswer(userText, messages);
+  if (contextual) return contextual;
+
   const text = String(userText || "").toLowerCase().trim();
 
   if (/\b(founder|founder name|founded|who founded|owner|ceo|director)\b/.test(text)) {
@@ -214,9 +279,7 @@ function cleanProviderOutput(content) {
 
   let text = content.trim();
 
-  if (!text || /^__NEED_SHEET__$/i.test(text)) {
-    return "";
-  }
+  if (!text || /^__NEED_SHEET__$/i.test(text)) return "";
 
   const forbidden = /user\s*safety|response\s*safety|content\s*policy|policy\s*violation|safety\s*filter|moderation|api\s*key|system\s*prompt|internal\s*error|tool\s*error/i;
 
@@ -226,10 +289,10 @@ function cleanProviderOutput(content) {
   return text.trim();
 }
 
-function safeFallback(userText) {
+function safeFallback(userText, messages = []) {
   const text = String(userText || "").toLowerCase().trim();
 
-  const builtIn = findBuiltInBusinessAnswer(text);
+  const builtIn = findBuiltInBusinessAnswer(text, messages);
   if (builtIn) return builtIn;
 
   if (/^\s*(hi|hello|hey)[!.\s]*$/i.test(text)) {
@@ -285,10 +348,7 @@ async function fetchJson(url, options = {}, timeoutMs = 15000) {
       data
     };
   } catch (error) {
-    if (error?.name === "AbortError") {
-      throw new Error("Request timeout");
-    }
-
+    if (error?.name === "AbortError") throw new Error("Request timeout");
     throw error;
   } finally {
     clearTimeout(timeout);
@@ -313,38 +373,23 @@ function flattenSheetResults(results) {
 
 async function fetchSheetData(query = "") {
   const baseUrl = process.env.GOOGLE_SHEETS_API_URL;
-
-  if (!baseUrl) {
-    return [];
-  }
+  if (!baseUrl) return [];
 
   const url = new URL(baseUrl);
-  if (query) {
-    url.searchParams.set("q", String(query).slice(0, 500));
-  } else {
-    url.searchParams.set("all", "1");
-  }
+  if (query) url.searchParams.set("q", String(query).slice(0, 500));
+  else url.searchParams.set("all", "1");
 
   const response = await fetchJson(url.toString(), {}, 15000);
 
-  if (!response.ok) {
-    throw new Error("Google Sheets HTTP " + response.status);
-  }
-
-  if (!response.data?.success || !Array.isArray(response.data.results)) {
-    return [];
-  }
+  if (!response.ok) throw new Error("Google Sheets HTTP " + response.status);
+  if (!response.data?.success || !Array.isArray(response.data.results)) return [];
 
   return flattenSheetResults(response.data.results);
 }
 
 async function refreshSheetCache() {
-  const fresh =
-    sheetCache.length > 0 &&
-    Date.now() - sheetCacheUpdatedAt < SHEET_CACHE_TTL_MS;
-
+  const fresh = sheetCache.length > 0 && Date.now() - sheetCacheUpdatedAt < SHEET_CACHE_TTL_MS;
   if (fresh) return sheetCache;
-
   if (sheetRequestInFlight) return sheetRequestInFlight;
 
   sheetRequestInFlight = fetchSheetData()
@@ -353,7 +398,6 @@ async function refreshSheetCache() {
         sheetCache = results;
         sheetCacheUpdatedAt = Date.now();
       }
-
       return sheetCache;
     })
     .catch((error) => {
@@ -373,27 +417,21 @@ function scoreSheetItem(item, query) {
     .join(" ")
     .toLowerCase();
 
-  const words = String(query || "")
-    .toLowerCase()
+  const normalizedQuery = String(query || "").toLowerCase().trim();
+  const words = normalizedQuery
     .replace(/[^\p{L}\p{N}₹\s.-]/gu, " ")
     .split(/\s+/)
     .filter((word) => word.length > 2);
 
-  let score = source.includes(String(query || "").toLowerCase().trim()) ? 5 : 0;
-
-  for (const word of words) {
-    if (source.includes(word)) score++;
-  }
+  let score = normalizedQuery && source.includes(normalizedQuery) ? 5 : 0;
+  for (const word of words) if (source.includes(word)) score++;
 
   return score;
 }
 
 function searchSheet(results, query) {
   return results
-    .map((item) => ({
-      ...item,
-      score: scoreSheetItem(item, query)
-    }))
+    .map((item) => ({ ...item, score: scoreSheetItem(item, query) }))
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 8);
@@ -404,25 +442,20 @@ function searchCachedSheet(query) {
 }
 
 function buildKnowledgeContext(results) {
-  if (!Array.isArray(results) || !results.length) {
-    return "No additional verified business information was found.";
-  }
+  if (!Array.isArray(results) || !results.length) return "No additional verified business information was found.";
 
-  return results
-    .map((item, index) => {
-      const fields = Object.entries(item.data || {})
-        .filter(([, value]) => String(value).trim())
-        .map(([key, value]) => key + ": " + String(value))
-        .join(" | ");
+  return results.map((item, index) => {
+    const fields = Object.entries(item.data || {})
+      .filter(([, value]) => String(value).trim())
+      .map(([key, value]) => key + ": " + String(value))
+      .join(" | ");
 
-      return "[" + (index + 1) + "] " + fields;
-    })
-    .join("\n");
+    return "[" + (index + 1) + "] " + fields;
+  }).join("\n");
 }
 
 async function getSheetKnowledge(userText) {
   let results = searchCachedSheet(userText);
-
   if (results.length) return results;
 
   try {
@@ -434,11 +467,7 @@ async function getSheetKnowledge(userText) {
 
   try {
     results = searchCachedSheet(userText);
-
-    if (!results.length) {
-      const cached = await refreshSheetCache();
-      results = searchSheet(cached, userText);
-    }
+    if (!results.length) results = searchSheet(await refreshSheetCache(), userText);
   } catch (error) {
     console.error("Google Sheets cache lookup failed:", error?.message || error);
   }
@@ -446,21 +475,22 @@ async function getSheetKnowledge(userText) {
   return results;
 }
 
-async function callOpenRouter(conversationMessages, knowledgeContext = "") {
+async function callOpenRouter(conversationMessages, knowledgeContext = "", memory = {}) {
   const apiKey = process.env.OPENROUTER_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not configured");
-  }
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
 
   const model = process.env.OPENROUTER_MODEL || "openrouter/free";
+  const memoryContext = [
+    memory.name ? "User name: " + memory.name : "",
+    memory.lastWebsiteType ? "Current website type in conversation: " + memory.lastWebsiteType : "",
+    memory.lastTopic ? "Current topic: " + memory.lastTopic : ""
+  ].filter(Boolean).join("\n");
 
-  const systemMessage = knowledgeContext
-    ? SYSTEM_PROMPT +
-      "\n\nADDITIONAL VERIFIED BRANDIQUE KNOWLEDGE\n" +
-      "Use these facts when relevant. Do not mention the source. Do not invent missing facts.\n" +
-      knowledgeContext
-    : SYSTEM_PROMPT;
+  const systemMessage = SYSTEM_PROMPT +
+    (memoryContext ? "\n\nCONVERSATION MEMORY\n" + memoryContext : "") +
+    (knowledgeContext
+      ? "\n\nADDITIONAL VERIFIED BRANDIQUE KNOWLEDGE\nUse these facts when relevant. Do not mention the source.\n" + knowledgeContext
+      : "");
 
   const response = await fetchJson(
     "https://openrouter.ai/api/v1/chat/completions",
@@ -486,21 +516,13 @@ async function callOpenRouter(conversationMessages, knowledgeContext = "") {
   );
 
   const data = response.data || {};
-
   if (!response.ok) {
-    const providerMessage =
-      data?.error?.message ||
-      data?.error?.metadata?.raw ||
-      "OpenRouter request failed";
-
+    const providerMessage = data?.error?.message || data?.error?.metadata?.raw || "OpenRouter request failed";
     throw new Error("OpenRouter HTTP " + response.status + ": " + providerMessage);
   }
 
   const content = data?.choices?.[0]?.message?.content;
-
-  if (typeof content !== "string" || !content.trim()) {
-    throw new Error("OpenRouter returned no message content");
-  }
+  if (typeof content !== "string" || !content.trim()) throw new Error("OpenRouter returned no message content");
 
   return content.trim();
 }
@@ -509,7 +531,8 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     service: "brandique-chatbot",
-    provider: "openrouter"
+    provider: "openrouter",
+    memory: "conversation"
   });
 });
 
@@ -517,34 +540,26 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
   const incoming = Array.isArray(req.body?.messages) ? req.body.messages : [];
 
   const messages = incoming
-    .filter(
-      (message) =>
-        message &&
-        (message.role === "user" || message.role === "assistant") &&
-        typeof message.content === "string"
+    .filter((message) =>
+      message &&
+      (message.role === "user" || message.role === "assistant") &&
+      typeof message.content === "string"
     )
-    .slice(-8)
+    .slice(-20)
     .map((message) => ({
       role: message.role,
-      content: message.content.slice(0, 3500)
+      content: message.content.slice(0, 2500)
     }));
 
-  if (!messages.length) {
-    return res.json({ message: safeFallback("") });
-  }
+  if (!messages.length) return res.json({ message: safeFallback("") });
 
-  const latestUserMessage = [...messages]
-    .reverse()
-    .find((message) => message.role === "user");
-
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === "user");
   const userText = latestUserMessage?.content || "";
+  const memory = extractConversationMemory(messages);
 
   try {
-    const directBusinessAnswer = findBuiltInBusinessAnswer(userText);
-
-    if (directBusinessAnswer) {
-      return res.json({ message: directBusinessAnswer });
-    }
+    const directBusinessAnswer = findBuiltInBusinessAnswer(userText, messages);
+    if (directBusinessAnswer) return res.json({ message: directBusinessAnswer });
 
     if (isBusinessFactQuestion(userText)) {
       const sheetResults = await getSheetKnowledge(userText);
@@ -552,12 +567,9 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
       if (sheetResults.length) {
         try {
           const answer = cleanProviderOutput(
-            await callOpenRouter(messages, buildKnowledgeContext(sheetResults))
+            await callOpenRouter(messages, buildKnowledgeContext(sheetResults), memory)
           );
-
-          if (answer) {
-            return res.json({ message: answer });
-          }
+          if (answer) return res.json({ message: answer });
         } catch (error) {
           console.error("Sheet answer generation failed:", error?.message || error);
         }
@@ -565,11 +577,8 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
     }
 
     try {
-      const answer = cleanProviderOutput(await callOpenRouter(messages));
-
-      if (answer) {
-        return res.json({ message: answer });
-      }
+      const answer = cleanProviderOutput(await callOpenRouter(messages, "", memory));
+      if (answer) return res.json({ message: answer });
     } catch (error) {
       console.error("OpenRouter request failed:", error?.message || error);
     }
@@ -577,7 +586,7 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
     console.error("Chat request failed:", error?.message || error);
   }
 
-  return res.json({ message: safeFallback(userText) });
+  return res.json({ message: safeFallback(userText, messages) });
 });
 
 app.use((_req, res) => {
