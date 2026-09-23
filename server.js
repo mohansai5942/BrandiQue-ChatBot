@@ -21,19 +21,39 @@ const apiLimiter = rateLimit({
 });
 
 
-function requestJson(url, options = {}, timeoutMs = 12000) {
+function requestJson(url, options = {}, timeoutMs = 12000, redirects = 0) {
   return new Promise((resolve, reject) => {
+    if (redirects > 5) {
+      reject(new Error("Too many redirects"));
+      return;
+    }
+
     const target = new URL(url);
     const requestOptions = {
       protocol: target.protocol,
       hostname: target.hostname,
-      port: target.port || 443,
+      port: target.port || (target.protocol === "http:" ? 80 : 443),
       path: target.pathname + target.search,
       method: options.method || "GET",
       headers: options.headers || {}
     };
 
-    const request = https.request(requestOptions, (response) => {
+    const transport = target.protocol === "http:" ? require("http") : https;
+
+    const request = transport.request(requestOptions, (response) => {
+      const status = response.statusCode || 0;
+      const location = response.headers.location;
+
+      if ([301, 302, 303, 307, 308].includes(status) && location) {
+        response.resume();
+
+        const redirectedUrl = new URL(location, url).toString();
+        requestJson(redirectedUrl, options, timeoutMs, redirects + 1)
+          .then(resolve)
+          .catch(reject);
+        return;
+      }
+
       let body = "";
 
       response.setEncoding("utf8");
@@ -51,8 +71,8 @@ function requestJson(url, options = {}, timeoutMs = 12000) {
         }
 
         resolve({
-          status: response.statusCode || 0,
-          ok: response.statusCode >= 200 && response.statusCode < 300,
+          status,
+          ok: status >= 200 && status < 300,
           data
         });
       });
@@ -71,6 +91,7 @@ function requestJson(url, options = {}, timeoutMs = 12000) {
     request.end();
   });
 }
+
 
 const SYSTEM_PROMPT = `
 You are Darling, the official AI assistant for BrandiQue Web Solutions.
@@ -335,6 +356,49 @@ function buildKnowledgeContext(results) {
 }
 
 
+
+function isBusinessFactQuestion(text) {
+  const value = String(text || "").toLowerCase();
+
+  return /\b(
+    founder|founder name|owner|ceo|director|team|about|company|brandique|
+    contact|phone|mobile|email|address|location|office|website url|domain|
+    price|pricing|cost|package|packages|service price|quotation|quote|
+    portfolio|instagram|telegram|linkedin|social media
+  )\b/x.test(value);
+}
+
+function buildDirectSheetAnswer(results, userText) {
+  if (!Array.isArray(results) || !results.length) return "";
+
+  const question = String(userText || "").toLowerCase();
+  const founderQuestion = /\b(founder|owner|ceo|director)\b/.test(question);
+
+  if (founderQuestion) {
+    for (const item of results) {
+      for (const [key, value] of Object.entries(item.data || {})) {
+        if (/founder|owner|ceo|director/i.test(key) && String(value).trim()) {
+          return "BrandiQue Web Solutions was founded by " + String(value).trim() + ".";
+        }
+      }
+    }
+  }
+
+  const useful = results
+    .slice(0, 3)
+    .map((item) =>
+      Object.entries(item.data || {})
+        .filter(([, value]) => String(value).trim())
+        .map(([key, value]) => key + ": " + String(value))
+        .join(" | ")
+    )
+    .filter(Boolean);
+
+  return useful.length
+    ? useful.join("\n")
+    : "";
+}
+
 async function callOpenRouter(conversationMessages, knowledgeContext = "") {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
@@ -420,8 +484,43 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
     .reverse()
     .find((message) => message.role === "user");
 
+  const userText = latestUserMessage?.content || "";
+
   try {
-    // Fast path: the existing built-in BrandiQue knowledge answers the question.
+    // Business facts use the verified Sheet knowledge directly.
+    // This avoids wasting an OpenRouter call when the built-in prompt cannot contain the fact.
+    if (isBusinessFactQuestion(userText)) {
+      let sheetResults = searchCachedSheet(userText);
+
+      if (!sheetResults.length) {
+        await refreshSheetCache(true);
+        sheetResults = searchCachedSheet(userText);
+      }
+
+      if (sheetResults.length) {
+        const knowledgeContext = buildKnowledgeContext(sheetResults);
+
+        try {
+          const sheetAnswer = cleanProviderOutput(
+            await callOpenRouter(messages, knowledgeContext)
+          );
+
+          if (sheetAnswer && !/^__NEED_SHEET__$/i.test(sheetAnswer.trim())) {
+            return res.json({ message: sheetAnswer });
+          }
+        } catch (sheetAiError) {
+          console.error("Sheet answer generation failed:", sheetAiError?.message || sheetAiError);
+        }
+
+        const directAnswer = buildDirectSheetAnswer(sheetResults, userText);
+
+        if (directAnswer) {
+          return res.json({ message: directAnswer });
+        }
+      }
+    }
+
+    // Normal questions use the built-in BrandiQue knowledge first.
     const firstAnswer = cleanProviderOutput(
       await callOpenRouter(messages)
     );
@@ -430,30 +529,36 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
       return res.json({ message: firstAnswer });
     }
 
-    // Only after the built-in knowledge is insufficient, search the local Sheet cache.
-    let sheetResults = searchCachedSheet(latestUserMessage?.content || "");
+    // If the model explicitly needs extra business facts, use the Sheet.
+    let sheetResults = searchCachedSheet(userText);
 
-    // If cache is not ready, refresh it once. This normally happens only after startup.
     if (!sheetResults.length) {
       await refreshSheetCache(true);
-      sheetResults = searchCachedSheet(latestUserMessage?.content || "");
+      sheetResults = searchCachedSheet(userText);
     }
 
-    const knowledgeContext = buildKnowledgeContext(sheetResults);
+    if (sheetResults.length) {
+      const knowledgeContext = buildKnowledgeContext(sheetResults);
 
-    const finalAnswer = cleanProviderOutput(
-      await callOpenRouter(messages, knowledgeContext)
-    );
+      const finalAnswer = cleanProviderOutput(
+        await callOpenRouter(messages, knowledgeContext)
+      );
 
-    if (finalAnswer && !/^__NEED_SHEET__$/i.test(finalAnswer.trim())) {
-      return res.json({ message: finalAnswer });
+      if (finalAnswer && !/^__NEED_SHEET__$/i.test(finalAnswer.trim())) {
+        return res.json({ message: finalAnswer });
+      }
+
+      const directAnswer = buildDirectSheetAnswer(sheetResults, userText);
+      if (directAnswer) {
+        return res.json({ message: directAnswer });
+      }
     }
   } catch (error) {
     console.error("Chat request failed:", error?.message || error);
   }
 
   return res.json({
-    message: safeFallback(latestUserMessage?.content)
+    message: safeFallback(userText)
   });
 });
 
