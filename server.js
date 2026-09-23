@@ -1,12 +1,12 @@
 require("dotenv").config();
+
 const path = require("path");
 const express = require("express");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const https = require("https");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json({ limit: "1mb" }));
@@ -20,194 +20,206 @@ const apiLimiter = rateLimit({
   message: { error: "Too many requests. Please try again in a minute." }
 });
 
-
-function requestJson(url, options = {}, timeoutMs = 12000, redirects = 0) {
-  return new Promise((resolve, reject) => {
-    if (redirects > 5) {
-      reject(new Error("Too many redirects"));
-      return;
-    }
-
-    const target = new URL(url);
-    const requestOptions = {
-      protocol: target.protocol,
-      hostname: target.hostname,
-      port: target.port || (target.protocol === "http:" ? 80 : 443),
-      path: target.pathname + target.search,
-      method: options.method || "GET",
-      headers: options.headers || {}
-    };
-
-    const transport = target.protocol === "http:" ? require("http") : https;
-
-    const request = transport.request(requestOptions, (response) => {
-      const status = response.statusCode || 0;
-      const location = response.headers.location;
-
-      if ([301, 302, 303, 307, 308].includes(status) && location) {
-        response.resume();
-
-        const redirectedUrl = new URL(location, url).toString();
-        requestJson(redirectedUrl, options, timeoutMs, redirects + 1)
-          .then(resolve)
-          .catch(reject);
-        return;
-      }
-
-      let body = "";
-
-      response.setEncoding("utf8");
-      response.on("data", (chunk) => {
-        body += chunk;
-      });
-
-      response.on("end", () => {
-        let data = {};
-
-        try {
-          data = body ? JSON.parse(body) : {};
-        } catch (_error) {
-          data = {};
-        }
-
-        resolve({
-          status,
-          ok: status >= 200 && status < 300,
-          data
-        });
-      });
-    });
-
-    request.setTimeout(timeoutMs, () => {
-      request.destroy(new Error("Request timeout"));
-    });
-
-    request.on("error", reject);
-
-    if (options.body) {
-      request.write(options.body);
-    }
-
-    request.end();
-  });
-}
-
-
 const SYSTEM_PROMPT = `
 You are Darling, the official AI assistant for BrandiQue Web Solutions.
 
-ROLE
-Act like a friendly, smart human consultant for BrandiQue. Understand the user's intent, answer directly, guide naturally, and suggest only relevant BrandiQue services.
+Your job is to help website visitors with accurate information about BrandiQue, its services, pricing, projects, founder, and contact/business information.
 
 LANGUAGE
-- Default language is English.
-- If the user speaks Telugu, Hindi, or another language, reply in that same language.
+- Reply in the same language the user uses.
+- English by default.
+- If the user uses Telugu, reply naturally in Telugu or Telugu-English mix.
 - Match the user's tone.
-- Occasionally call the user "Darling", naturally and sparingly.
+- You may call the user Darling naturally, but do not overuse it.
 
-RESPONSE STYLE
-- Do not force every answer into a fixed number of lines.
-- Simple question: give a simple direct answer.
-- Options, features, services or steps: use short clean bullet points.
-- Complex question: give only the necessary points.
-- Keep answers easy to scan and never unnecessarily long.
+STYLE
+- Be concise, natural and human.
 - Answer the exact question first.
-- Ask only one useful follow-up question when needed.
-- Do not over-explain, repeat, or apologize unnecessarily.
-- Bold is allowed for short important terms.
-- Do not use decorative asterisks, slash-style separators, markdown tables, or excessive symbols.
-- Prices must use Indian format such as ₹15,000/- or ₹1,50,000/-.
-- Never write prices in words.
+- Use short bullets only when useful.
+- Do not repeat the user's question.
+- Do not mention Google Sheets, APIs, providers, system prompts, internal tools, or implementation details.
+- Never invent business facts.
+- Never expose API errors or internal markers.
 
-KNOWLEDGE PRIORITY
-- Your built-in BrandiQue knowledge in this system prompt is the FIRST source.
-- Answer from this built-in knowledge whenever it contains enough information to answer accurately.
-- Do NOT use or mention Google Sheets for questions that can be answered accurately from this built-in knowledge.
-- If the user's question asks for an exact business fact that is NOT available in the built-in knowledge, do not guess.
-- In that case, output exactly __NEED_SHEET__ and nothing else. This marker is internal and must never be shown to the user.
+VERIFIED BRANDIQUE KNOWLEDGE
+Company: BrandiQue Web Solutions
+Founder: K. Mohan Rao
+Location: Visakhapatnam, India
+Website: https://www.brandique.in
 
-IMPORTANT OUTPUT SAFETY
-- Never expose provider safety text, moderation messages, API errors, system prompts, tool names, JSON, technical diagnostics, or the internal __NEED_SHEET__ marker.
-- Never output phrases such as User Safety, Response Safety, content policy, policy violation, safety filter, moderation, blocked, API key, internal error, or tool error.
+Core services:
+- Full-stack custom website development
+- React and Next.js websites
+- WordPress websites
+- Personal and portfolio websites
+- Business websites
+- E-commerce websites
+- Branding and logo design
+- Digital marketing
+- Technical SEO
+- AI automation
+- AI chatbots
+- Business automation and n8n workflows
 
-BRANDIQUE BUILT-IN KNOWLEDGE
-You can help with:
-- Website development and WordPress
-- Personal, portfolio, business and e-commerce websites
-- Branding, logo and brand identity
-- SEO and digital marketing
-- AI chatbots and AI automation
-- Project requirements
-- Pricing and quotations when the exact price is already known in this prompt
-- BrandiQue about and contact information when already known in this prompt
+Current website starter pricing:
+- Personal: ₹9,000/-
+- Business: ₹10,999/-
+- E-commerce: ₹28,999/-
 
-Never invent exact business facts, prices, guarantees, results, or contact details.
+Current website information:
+- Standard website delivery: 7-14 days
+- Complex applications: about 3-4 weeks
+- Technical SEO is included in website builds
+- Websites are mobile responsive
+- Maintenance is available
+- BrandiQue serves clients from Visakhapatnam and globally
+
+IMPORTANT
+- Treat the verified knowledge above as authoritative for these facts.
+- For exact facts not present above, use additional verified business knowledge supplied by the backend.
+- If the exact fact is unavailable, do not guess.
+- Never claim a price is final unless the user asks about the published starter price.
+- For project-specific quotations, ask for the information needed for a quote.
 
 GREETING
-If the user says hi, hello, or hey:
+For hi, hello or hey:
 Hey 🙂 What are you looking for?
 
-CONFUSION
-If the user says what, huh, or ?:
-I can help with websites, branding, digital marketing, or AI chatbots 🙂 What do you need?
+FOUNDER
+If asked who founded BrandiQue, who the founder is, owner, CEO or similar:
+BrandiQue Web Solutions was founded by K. Mohan Rao.
 
-SERVICE DETECTION
-Identify the user's intent as Website, Branding, Digital Marketing, AI Chatbot or Automation, E-commerce, Pricing, Quote, About, or Contact.
-If unclear:
-Are you looking for a website, branding, marketing, or chatbot? 🙂
+SERVICES
+If asked about services, give the relevant services directly. Do not dump the full list unless asked.
 
-WEBSITE FLOW
-If asked about websites, give these options:
-- Personal website
-- Portfolio website
-- Business website
-- E-commerce website
-Ask which type they need.
-After they choose, explain briefly, give verified pricing when available, and ask one relevant follow-up.
+PRICING
+If asked for pricing, give the published starter prices above and clarify that project-specific pricing can vary based on requirements.
 
-BRANDING FLOW
-If asked about branding, explain briefly that it covers logo, colors, typography and brand identity. Give verified pricing when available and ask whether it is a new brand or rebranding.
-
-DIGITAL MARKETING FLOW
-If asked about digital marketing, explain briefly that it can include SEO, social media marketing, advertising and growth strategies. Give verified pricing when available and ask whether they are growing a new or existing business.
-
-AI CHATBOT AND AUTOMATION FLOW
-If asked about AI chatbots or automation, explain briefly that BrandiQue can build customer-support chatbots, lead-capture chatbots, website assistants and business automations. Give verified pricing when available and ask one relevant question.
-
-SMART SUGGESTIONS
-- Website: optionally suggest a chatbot or marketing.
-- Marketing: optionally suggest a website.
-- Branding: optionally suggest a website or marketing.
-Keep suggestions natural and short. Never pressure the user.
-
-QUOTE FLOW
-If the user clearly wants a quotation, pricing for a project, or wants something built:
-Ask for:
+QUOTE
+If the user clearly wants a quote, ask for:
 - Name
 - Phone number
 - Email
 - Service needed
 - Website type if applicable
-- Short description of the project
-
-After details:
-Thanks, [Name] 🙂 I've got the details. Our team will contact you with the quotation. Anything else you need?
+- Short project description
 
 OUT OF SCOPE
 For unrelated questions:
 I’m focused on BrandiQue 🙂 I can help with websites, branding, marketing, or AI solutions.
-
-AMBIGUOUS INPUT
-Understand typos, incomplete sentences and casual wording. If the intended meaning is obvious, answer it. If genuinely unclear, ask one short clarification. Never invent a random answer just to fill space.
-
-FINAL RULE
-Every user message must receive a natural, useful, customer-facing response. Match the response format and length to the question.
 `;
+
+const BUSINESS_FACT_PATTERNS = [
+  /\b(founder|founder name|founded|who owns|owner|ceo|director)\b/i,
+  /\b(about|company|brandique|contact|phone|mobile|email|address|location|office)\b/i,
+  /\b(website url|domain|price|pricing|cost|package|packages|service price|quotation|quote)\b/i,
+  /\b(portfolio|instagram|telegram|linkedin|social media|delivery time|maintenance)\b/i
+];
+
+const BUSINESS_KNOWLEDGE = [
+  {
+    keys: ["founder", "owner", "ceo", "director", "founded", "who founded"],
+    answer: "BrandiQue Web Solutions was founded by K. Mohan Rao."
+  },
+  {
+    keys: ["website", "website url", "domain", "url"],
+    answer: "BrandiQue's official website is https://www.brandique.in."
+  },
+  {
+    keys: ["location", "office", "address"],
+    answer: "BrandiQue Web Solutions is based in Visakhapatnam, India and serves clients globally."
+  },
+  {
+    keys: ["personal website", "personal", "portfolio price", "personal price"],
+    answer: "The published starter price for a Personal website is ₹9,000/-."
+  },
+  {
+    keys: ["business website", "business price"],
+    answer: "The published starter price for a Business website is ₹10,999/-."
+  },
+  {
+    keys: ["ecommerce", "e-commerce", "online store", "ecommerce price", "e-commerce price"],
+    answer: "The published starter price for an E-commerce website is ₹28,999/-."
+  },
+  {
+    keys: ["delivery", "delivery time", "how long", "days"],
+    answer: "Standard website builds take 7-14 days. Complex applications usually take about 3-4 weeks."
+  },
+  {
+    keys: ["seo", "technical seo"],
+    answer: "Yes. Technical SEO is included in BrandiQue website builds."
+  },
+  {
+    keys: ["maintenance", "maintain"],
+    answer: "Yes. BrandiQue offers ongoing website maintenance and technical support."
+  }
+];
+
+function isBusinessFactQuestion(text) {
+  return BUSINESS_FACT_PATTERNS.some((pattern) => pattern.test(String(text || "")));
+}
+
+function findBuiltInBusinessAnswer(userText) {
+  const text = String(userText || "").toLowerCase().trim();
+
+  if (/\b(founder|founder name|founded|who founded|owner|ceo|director)\b/.test(text)) {
+    return "BrandiQue Web Solutions was founded by K. Mohan Rao.";
+  }
+
+  if (/\b(who are you|what is brandique|about brandique|about the company)\b/.test(text)) {
+    return "BrandiQue Web Solutions is a digital studio focused on websites, branding, digital marketing, AI automation and AI chatbots.";
+  }
+
+  if (/\b(website url|website link|domain|official website)\b/.test(text)) {
+    return "BrandiQue's official website is https://www.brandique.in.";
+  }
+
+  if (/\b(personal website|personal site)\b/.test(text) && /\b(price|pricing|cost|how much)\b/.test(text)) {
+    return "The published starter price for a Personal website is ₹9,000/-.";
+  }
+
+  if (/\b(business website|business site)\b/.test(text) && /\b(price|pricing|cost|how much)\b/.test(text)) {
+    return "The published starter price for a Business website is ₹10,999/-.";
+  }
+
+  if (/\b(e[- ]?commerce|online store)\b/.test(text) && /\b(price|pricing|cost|how much)\b/.test(text)) {
+    return "The published starter price for an E-commerce website is ₹28,999/-.";
+  }
+
+  if (/\b(price|pricing|cost|packages?)\b/.test(text) && !/\b(project|custom|quote|quotation)\b/.test(text)) {
+    return "Published starter prices are: Personal ₹9,000/-, Business ₹10,999/-, and E-commerce ₹28,999/-.";
+  }
+
+  if (/\b(delivery|delivery time|how long)\b/.test(text)) {
+    return "Standard website builds take 7-14 days. Complex applications usually take about 3-4 weeks.";
+  }
+
+  if (/\b(maintenance|maintain)\b/.test(text)) {
+    return "Yes. BrandiQue offers ongoing website maintenance and technical support.";
+  }
+
+  if (/\b(technical seo|seo included|seo include)\b/.test(text)) {
+    return "Yes. Technical SEO is included in BrandiQue website builds.";
+  }
+
+  if (/\b(location|office|address)\b/.test(text)) {
+    return "BrandiQue Web Solutions is based in Visakhapatnam, India and serves clients globally.";
+  }
+
+  return "";
+}
+
 function cleanProviderOutput(content) {
   if (typeof content !== "string") return "";
+
   let text = content.trim();
 
+  if (!text || /^__NEED_SHEET__$/i.test(text)) {
+    return "";
+  }
+
   const forbidden = /user\s*safety|response\s*safety|content\s*policy|policy\s*violation|safety\s*filter|moderation|api\s*key|system\s*prompt|internal\s*error|tool\s*error/i;
+
   if (forbidden.test(text)) return "";
 
   text = text.replace(/^\s*(assistant|response)\s*:\s*/i, "");
@@ -215,14 +227,17 @@ function cleanProviderOutput(content) {
 }
 
 function safeFallback(userText) {
-  const text = String(userText || "").toLowerCase();
+  const text = String(userText || "").toLowerCase().trim();
 
-  if (/\b(quote|quotation|pricing|price|cost)\b/.test(text)) {
-    return "Sure 🙂 Share your name, phone number, email, service, and a short description of your project.";
-  }
+  const builtIn = findBuiltInBusinessAnswer(text);
+  if (builtIn) return builtIn;
 
   if (/^\s*(hi|hello|hey)[!.\s]*$/i.test(text)) {
     return "Hey 🙂 What are you looking for?";
+  }
+
+  if (/\b(quote|quotation|custom quote)\b/.test(text)) {
+    return "Sure 🙂 Share your name, phone number, email, service, and a short description of your project.";
   }
 
   if (/\b(website|web site|web development)\b/.test(text)) {
@@ -244,71 +259,116 @@ function safeFallback(userText) {
   return "I can help with BrandiQue websites, branding, marketing, or AI solutions 🙂 What do you need?";
 }
 
+async function fetchJson(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      redirect: "follow",
+      signal: controller.signal
+    });
+
+    const raw = await response.text();
+    let data = {};
+
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch (_error) {
+      data = {};
+    }
+
+    return {
+      status: response.status,
+      ok: response.ok,
+      data
+    };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("Request timeout");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 let sheetCache = [];
 let sheetCacheUpdatedAt = 0;
-const SHEET_CACHE_TTL_MS = 5 * 60 * 1000;
+const SHEET_CACHE_TTL_MS = 10 * 60 * 1000;
+let sheetRequestInFlight = null;
 
 function flattenSheetResults(results) {
   if (!Array.isArray(results)) return [];
 
-  return results.map((item) => {
-    const data = item?.data && typeof item.data === "object" ? item.data : {};
-    return {
+  return results
+    .map((item) => ({
       sheet: String(item?.sheet || ""),
-      data
-    };
-  });
+      data: item?.data && typeof item.data === "object" ? item.data : {}
+    }))
+    .filter((item) => Object.keys(item.data).length > 0);
 }
 
 async function fetchSheetData(query = "") {
   const baseUrl = process.env.GOOGLE_SHEETS_API_URL;
 
   if (!baseUrl) {
-    throw new Error("Google Sheets API URL not configured");
+    return [];
   }
 
-  const suffix = query
-    ? "?q=" + encodeURIComponent(String(query).slice(0, 1000))
-    : "?all=1";
+  const url = new URL(baseUrl);
+  if (query) {
+    url.searchParams.set("q", String(query).slice(0, 500));
+  } else {
+    url.searchParams.set("all", "1");
+  }
 
-  const response = await requestJson(baseUrl + suffix, {}, 5000);
+  const response = await fetchJson(url.toString(), {}, 15000);
 
   if (!response.ok) {
     throw new Error("Google Sheets HTTP " + response.status);
   }
 
-  const data = response.data;
-
-  if (!data?.success || !Array.isArray(data.results)) {
+  if (!response.data?.success || !Array.isArray(response.data.results)) {
     return [];
   }
 
-  return flattenSheetResults(data.results);
+  return flattenSheetResults(response.data.results);
 }
 
-async function refreshSheetCache(force = false) {
-  const fresh = sheetCache.length > 0 &&
+async function refreshSheetCache() {
+  const fresh =
+    sheetCache.length > 0 &&
     Date.now() - sheetCacheUpdatedAt < SHEET_CACHE_TTL_MS;
 
-  if (!force && fresh) {
-    return sheetCache;
-  }
+  if (fresh) return sheetCache;
 
-  try {
-    const results = await fetchSheetData();
-    if (results.length) {
-      sheetCache = results;
-      sheetCacheUpdatedAt = Date.now();
-    }
-  } catch (error) {
-    console.error("Google Sheets cache refresh failed:", error?.message || error);
-  }
+  if (sheetRequestInFlight) return sheetRequestInFlight;
 
-  return sheetCache;
+  sheetRequestInFlight = fetchSheetData()
+    .then((results) => {
+      if (results.length) {
+        sheetCache = results;
+        sheetCacheUpdatedAt = Date.now();
+      }
+
+      return sheetCache;
+    })
+    .catch((error) => {
+      console.error("Google Sheets cache refresh failed:", error?.message || error);
+      return sheetCache;
+    })
+    .finally(() => {
+      sheetRequestInFlight = null;
+    });
+
+  return sheetRequestInFlight;
 }
 
 function scoreSheetItem(item, query) {
-  const text = Object.entries(item.data || {})
+  const source = Object.entries(item.data || {})
     .map(([key, value]) => key + " " + String(value))
     .join(" ")
     .toLowerCase();
@@ -319,17 +379,17 @@ function scoreSheetItem(item, query) {
     .split(/\s+/)
     .filter((word) => word.length > 2);
 
-  let score = 0;
+  let score = source.includes(String(query || "").toLowerCase().trim()) ? 5 : 0;
 
   for (const word of words) {
-    if (text.includes(word)) score++;
+    if (source.includes(word)) score++;
   }
 
   return score;
 }
 
-function searchCachedSheet(query) {
-  const ranked = sheetCache
+function searchSheet(results, query) {
+  return results
     .map((item) => ({
       ...item,
       score: scoreSheetItem(item, query)
@@ -337,97 +397,77 @@ function searchCachedSheet(query) {
     .filter((item) => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 8);
+}
 
-  return ranked;
+function searchCachedSheet(query) {
+  return searchSheet(sheetCache, query);
 }
 
 function buildKnowledgeContext(results) {
   if (!Array.isArray(results) || !results.length) {
-    return "No relevant business information was found.";
+    return "No additional verified business information was found.";
   }
 
-  return results.map((item, index) => {
-    const fields = Object.entries(item.data || {})
-      .map(([key, value]) => key + ": " + String(value))
-      .join(" | ");
-
-    return "[" + (index + 1) + "] " + fields;
-  }).join("\n");
-}
-
-
-
-function isBusinessFactQuestion(text) {
-  const value = String(text || "").toLowerCase();
-
-  return /\b(founder|founder name|owner|ceo|director|team|about|company|brandique|contact|phone|mobile|email|address|location|office|website url|domain|price|pricing|cost|package|packages|service price|quotation|quote|portfolio|instagram|telegram|linkedin|social media)\b/i.test(value);
-}
-
-function buildDirectSheetAnswer(results, userText) {
-  if (!Array.isArray(results) || !results.length) return "";
-
-  const question = String(userText || "").toLowerCase();
-  const founderQuestion = /\b(founder|owner|ceo|director)\b/i.test(question);
-
-  if (founderQuestion) {
-    for (const item of results) {
-      const entries = Object.entries(item.data || {});
-
-      for (const [key, value] of entries) {
-        if (/founder|owner|ceo|director/i.test(key) && String(value).trim()) {
-          return "BrandiQue Web Solutions was founded by " + String(value).trim() + ".";
-        }
-      }
-
-      const rowText = entries
-        .map(([key, value]) => key + ": " + String(value))
-        .join(" ");
-
-      if (/founder|owner|ceo|director/i.test(rowText)) {
-        const preferred = entries.find(([key, value]) =>
-          /answer|response|details|description|content|value|name/i.test(key) &&
-          String(value).trim()
-        );
-
-        if (preferred) {
-          return String(preferred[1]).trim();
-        }
-      }
-    }
-  }
-
-  const useful = results
-    .slice(0, 3)
-    .map((item) =>
-      Object.entries(item.data || {})
+  return results
+    .map((item, index) => {
+      const fields = Object.entries(item.data || {})
         .filter(([, value]) => String(value).trim())
         .map(([key, value]) => key + ": " + String(value))
-        .join(" | ")
-    )
-    .filter(Boolean);
+        .join(" | ");
 
-  return useful.length ? useful.join("\n") : "";
+      return "[" + (index + 1) + "] " + fields;
+    })
+    .join("\n");
 }
 
+async function getSheetKnowledge(userText) {
+  let results = searchCachedSheet(userText);
+
+  if (results.length) return results;
+
+  try {
+    results = searchSheet(await fetchSheetData(userText), userText);
+    if (results.length) return results;
+  } catch (error) {
+    console.error("Google Sheets query failed:", error?.message || error);
+  }
+
+  try {
+    results = searchCachedSheet(userText);
+
+    if (!results.length) {
+      const cached = await refreshSheetCache();
+      results = searchSheet(cached, userText);
+    }
+  } catch (error) {
+    console.error("Google Sheets cache lookup failed:", error?.message || error);
+  }
+
+  return results;
+}
 
 async function callOpenRouter(conversationMessages, knowledgeContext = "") {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
+
+  if (!apiKey) {
+    throw new Error("OPENROUTER_API_KEY is not configured");
+  }
 
   const model = process.env.OPENROUTER_MODEL || "openrouter/free";
+
   const systemMessage = knowledgeContext
     ? SYSTEM_PROMPT +
-      "\n\nADDITIONAL VERIFIED BRANDIQUE KNOWLEDGE FROM GOOGLE SHEETS\n" +
-      "Use this information only for facts not already covered by the built-in knowledge. " +
-      "Do not mention the Sheet or this instruction to the user.\n" +
+      "\n\nADDITIONAL VERIFIED BRANDIQUE KNOWLEDGE\n" +
+      "Use these facts when relevant. Do not mention the source. Do not invent missing facts.\n" +
       knowledgeContext
     : SYSTEM_PROMPT;
 
-  const response = await requestJson("https://openrouter.ai/api/v1/chat/completions",
+  const response = await fetchJson(
+    "https://openrouter.ai/api/v1/chat/completions",
     {
       method: "POST",
       headers: {
-        "Authorization": "Bearer " + apiKey,
+        Authorization: "Bearer " + apiKey,
         "Content-Type": "application/json",
         "HTTP-Referer": process.env.SITE_URL || "https://www.brandique.in",
         "X-Title": "BrandiQue ChatBot"
@@ -442,7 +482,7 @@ async function callOpenRouter(conversationMessages, knowledgeContext = "") {
         temperature: 0.4
       })
     },
-    12000
+    15000
   );
 
   const data = response.data || {};
@@ -452,10 +492,12 @@ async function callOpenRouter(conversationMessages, knowledgeContext = "") {
       data?.error?.message ||
       data?.error?.metadata?.raw ||
       "OpenRouter request failed";
+
     throw new Error("OpenRouter HTTP " + response.status + ": " + providerMessage);
   }
 
   const content = data?.choices?.[0]?.message?.content;
+
   if (typeof content !== "string" || !content.trim()) {
     throw new Error("OpenRouter returned no message content");
   }
@@ -481,7 +523,7 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
         (message.role === "user" || message.role === "assistant") &&
         typeof message.content === "string"
     )
-    .slice(-6)
+    .slice(-8)
     .map((message) => ({
       role: message.role,
       content: message.content.slice(0, 3500)
@@ -498,89 +540,44 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
   const userText = latestUserMessage?.content || "";
 
   try {
-    // Business facts use the verified Sheet knowledge directly.
-    // This avoids wasting an OpenRouter call when the built-in prompt cannot contain the fact.
-    if (isBusinessFactQuestion(userText)) {
-      let sheetResults = searchCachedSheet(userText);
+    const directBusinessAnswer = findBuiltInBusinessAnswer(userText);
 
-      if (!sheetResults.length) {
-        try {
-          sheetResults = await fetchSheetData(userText);
-        } catch (sheetError) {
-          console.error("Google Sheets direct query failed:", sheetError?.message || sheetError);
-          await refreshSheetCache(true);
-          sheetResults = searchCachedSheet(userText);
-        }
-      }
+    if (directBusinessAnswer) {
+      return res.json({ message: directBusinessAnswer });
+    }
+
+    if (isBusinessFactQuestion(userText)) {
+      const sheetResults = await getSheetKnowledge(userText);
 
       if (sheetResults.length) {
-        const knowledgeContext = buildKnowledgeContext(sheetResults);
-
         try {
-          const sheetAnswer = cleanProviderOutput(
-            await callOpenRouter(messages, knowledgeContext)
+          const answer = cleanProviderOutput(
+            await callOpenRouter(messages, buildKnowledgeContext(sheetResults))
           );
 
-          if (sheetAnswer && !/^__NEED_SHEET__$/i.test(sheetAnswer.trim())) {
-            return res.json({ message: sheetAnswer });
+          if (answer) {
+            return res.json({ message: answer });
           }
-        } catch (sheetAiError) {
-          console.error("Sheet answer generation failed:", sheetAiError?.message || sheetAiError);
-        }
-
-        const directAnswer = buildDirectSheetAnswer(sheetResults, userText);
-
-        if (directAnswer) {
-          return res.json({ message: directAnswer });
+        } catch (error) {
+          console.error("Sheet answer generation failed:", error?.message || error);
         }
       }
     }
 
-    // Normal questions use the built-in BrandiQue knowledge first.
-    const firstAnswer = cleanProviderOutput(
-      await callOpenRouter(messages)
-    );
+    try {
+      const answer = cleanProviderOutput(await callOpenRouter(messages));
 
-    if (firstAnswer && !/^__NEED_SHEET__$/i.test(firstAnswer.trim())) {
-      return res.json({ message: firstAnswer });
-    }
-
-    // If the model explicitly needs extra business facts, use the Sheet.
-    let sheetResults = searchCachedSheet(userText);
-
-    if (!sheetResults.length) {
-      try {
-        sheetResults = await fetchSheetData(userText);
-      } catch (sheetError) {
-        console.error("Google Sheets direct query failed:", sheetError?.message || sheetError);
-        await refreshSheetCache(true);
-        sheetResults = searchCachedSheet(userText);
+      if (answer) {
+        return res.json({ message: answer });
       }
-    }
-
-    if (sheetResults.length) {
-      const knowledgeContext = buildKnowledgeContext(sheetResults);
-
-      const finalAnswer = cleanProviderOutput(
-        await callOpenRouter(messages, knowledgeContext)
-      );
-
-      if (finalAnswer && !/^__NEED_SHEET__$/i.test(finalAnswer.trim())) {
-        return res.json({ message: finalAnswer });
-      }
-
-      const directAnswer = buildDirectSheetAnswer(sheetResults, userText);
-      if (directAnswer) {
-        return res.json({ message: directAnswer });
-      }
+    } catch (error) {
+      console.error("OpenRouter request failed:", error?.message || error);
     }
   } catch (error) {
     console.error("Chat request failed:", error?.message || error);
   }
 
-  return res.json({
-    message: safeFallback(userText)
-  });
+  return res.json({ message: safeFallback(userText) });
 });
 
 app.use((_req, res) => {
@@ -589,8 +586,6 @@ app.use((_req, res) => {
 
 app.listen(PORT, () => {
   console.log("BrandiQue ChatBot running on port " + PORT);
-
-  // Warm the Sheet cache in the background so fallback questions stay fast.
-  refreshSheetCache(true);
-  setInterval(() => refreshSheetCache(true), SHEET_CACHE_TTL_MS);
+  console.log("OpenRouter model:", process.env.OPENROUTER_MODEL || "openrouter/free");
+  console.log("Google Sheets knowledge:", process.env.GOOGLE_SHEETS_API_URL ? "enabled on demand" : "not configured");
 });
