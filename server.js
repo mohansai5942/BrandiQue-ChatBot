@@ -360,15 +360,18 @@ function safeFallback(userText, messages = []) {
   return "I can help with BrandiQue websites, branding, marketing, or AI solutions 🙂 What do you need?";
 }
 
-async function fetchJson(url, options = {}, timeoutMs = 15000) {
+async function fetchJson(url, options = {}, timeoutMs = 15000, externalSignal = null) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const signal = externalSignal
+    ? AbortSignal.any([controller.signal, externalSignal])
+    : controller.signal;
 
   try {
     const response = await fetch(url, {
       ...options,
       redirect: "follow",
-      signal: controller.signal
+      signal
     });
 
     const raw = await response.text();
@@ -399,10 +402,11 @@ const PROVIDER_ORDER = String(process.env.PROVIDER_ORDER || "openrouter,gemini")
   .filter(Boolean);
 
 const PROVIDER_COOLDOWN_MS = Number(process.env.PROVIDER_COOLDOWN_MS || 60 * 60 * 1000);
-const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || 6000);
-const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 15000);
+const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || 1000);
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 7000);
+const PROVIDER_FAILOVER_DELAY_MS = Number(process.env.PROVIDER_FAILOVER_DELAY_MS || 1000);
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-const GEMINI_FALLBACK_MODELS = String(process.env.GEMINI_FALLBACK_MODELS || "gemini-3.5-flash-lite,gemini-3.6-flash")
+const GEMINI_FALLBACK_MODELS = String(process.env.GEMINI_FALLBACK_MODELS || "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite")
   .split(",")
   .map((item) => item.trim())
   .filter(Boolean);
@@ -628,12 +632,8 @@ function buildGeminiContents(conversationMessages) {
   return contents;
 }
 
-async function callGemini(conversationMessages, knowledgeContext = "", memory = {}) {
+async function callGeminiModel(model, conversationMessages, knowledgeContext, memory, abortSignal) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
-
-  const models = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS]
-    .filter((model, index, list) => model && list.indexOf(model) === index);
 
   const memoryContext = [
     memory.name ? "User name: " + memory.name : "",
@@ -647,64 +647,115 @@ async function callGemini(conversationMessages, knowledgeContext = "", memory = 
       ? "\n\nADDITIONAL VERIFIED BRANDIQUE KNOWLEDGE\nUse these facts when relevant. Do not mention the source.\n" + knowledgeContext
       : "");
 
-  const errors = [];
-
-  for (const model of models) {
-    try {
-      const response = await fetchJson(
-        "https://generativelanguage.googleapis.com/v1beta/models/" +
-          encodeURIComponent(model) +
-          ":generateContent",
-        {
-          method: "POST",
-          headers: {
-            "x-goog-api-key": apiKey,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemMessage }]
-            },
-            contents: buildGeminiContents(conversationMessages),
-            generationConfig: {
-              thinkingConfig: {
-                thinkingLevel: "low"
-              },
-              maxOutputTokens: 300
-            }
-          })
+  const response = await fetchJson(
+    "https://generativelanguage.googleapis.com/v1beta/models/" +
+      encodeURIComponent(model) +
+      ":generateContent",
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemMessage }]
         },
-        GEMINI_TIMEOUT_MS
-      );
+        contents: buildGeminiContents(conversationMessages),
+        generationConfig: {
+          thinkingConfig: {
+            thinkingLevel: "low"
+          },
+          maxOutputTokens: 300
+        }
+      })
+    },
+    GEMINI_TIMEOUT_MS,
+    abortSignal
+  );
 
-      const data = response.data || {};
-      if (!response.ok) {
-        const providerMessage =
-          data?.error?.message ||
-          data?.error?.status ||
-          "Gemini request failed";
-        throw new Error("Gemini HTTP " + response.status + ": " + providerMessage);
-      }
-
-      const content = data?.candidates?.[0]?.content?.parts
-        ?.map((part) => String(part?.text || ""))
-        .join("")
-        .trim();
-
-      if (!content) {
-        const reason = data?.candidates?.[0]?.finishReason || "no message content";
-        throw new Error("Gemini returned " + reason);
-      }
-
-      return content;
-    } catch (error) {
-      const message = error?.message || String(error);
-      errors.push(model + ": " + message);
-      console.error("gemini model " + model + " failed:", message);
-    }
+  const data = response.data || {};
+  if (!response.ok) {
+    const providerMessage =
+      data?.error?.message ||
+      data?.error?.status ||
+      "Gemini request failed";
+    throw new Error("Gemini HTTP " + response.status + ": " + providerMessage);
   }
 
-  throw new Error(errors.join(" | ") || "Gemini request failed");
+  const content = data?.candidates?.[0]?.content?.parts
+    ?.map((part) => String(part?.text || ""))
+    .join("")
+    .trim();
+
+  if (!content) {
+    const reason = data?.candidates?.[0]?.finishReason || "no message content";
+    throw new Error("Gemini returned " + reason);
+  }
+
+  return content;
+}
+
+async function callGemini(conversationMessages, knowledgeContext = "", memory = {}) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+
+  const models = [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS]
+    .filter((model, index, list) => model && list.indexOf(model) === index);
+
+  const controllers = new Map();
+  const errors = [];
+  let launched = 0;
+  let settled = false;
+
+  return new Promise((resolve, reject) => {
+    const finishSuccess = (content) => {
+      if (settled) return;
+      settled = true;
+      for (const controller of controllers.values()) controller.abort();
+      resolve(content);
+    };
+
+    const finishFailure = () => {
+      if (settled || launched < models.length) return;
+      settled = true;
+      reject(new Error(errors.join(" | ") || "Gemini request failed"));
+    };
+
+    const launchNext = () => {
+      if (settled || launched >= models.length) {
+        finishFailure();
+        return;
+      }
+
+      const model = models[launched++];
+      const controller = new AbortController();
+      controllers.set(model, controller);
+
+      callGeminiModel(model, conversationMessages, knowledgeContext, memory, controller.signal)
+        .then((content) => finishSuccess(content))
+        .catch((error) => {
+          if (settled) return;
+
+          const message = error?.message || String(error);
+          errors.push(model + ": " + message);
+          console.error("gemini model " + model + " failed:", message);
+
+          controllers.delete(model);
+          finishFailure();
+
+          if (!settled) launchNext();
+        });
+
+      if (launched < models.length) {
+        setTimeout(() => {
+          if (!settled) launchNext();
+        }, PROVIDER_FAILOVER_DELAY_MS);
+      }
+    };
+
+    launchNext();
+  });
 }
 
 async function callProviderWithFallback(conversationMessages, knowledgeContext = "", memory = {}) {
@@ -735,11 +786,15 @@ async function callProviderWithFallback(conversationMessages, knowledgeContext =
       const message = error?.message || String(error);
       errors.push(provider + ": " + message);
 
-      if (/OpenRouter HTTP 429:.*free-models-per-day|OpenRouter HTTP 429:.*daily/i.test(message)) {
+      if (provider === "openrouter" && /HTTP 429|quota|rate limit/i.test(message)) {
         providerCooldownUntil[provider] = Date.now() + 24 * 60 * 60 * 1000;
-        console.error(provider + " disabled until daily free quota is expected to reset.");
-      } else if (/HTTP 429|HTTP 408|HTTP 5\d\d|timeout|temporarily unavailable|quota|rate limit/i.test(message)) {
+        console.error("openrouter disabled after quota/rate-limit response; Gemini failover remains active.");
+      } else if (provider === "openrouter" && /HTTP 408|HTTP 5\d\d|timeout|temporarily unavailable/i.test(message)) {
         markProviderCooldown(provider, message);
+      } else if (provider === "gemini" && /HTTP 429|quota|rate limit/i.test(message)) {
+        console.error("Gemini model-level limit reached; another configured Gemini model was attempted.");
+      } else if (provider === "gemini" && /HTTP 408|HTTP 5\d\d|timeout|temporarily unavailable/i.test(message)) {
+        console.error("Gemini transient failure; another configured Gemini model was attempted.");
       }
 
       console.error(provider + " request failed:", message);
@@ -758,6 +813,7 @@ app.get("/api/health", (_req, res) => {
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
     geminiModel: GEMINI_MODEL,
     geminiFallbackModels: GEMINI_FALLBACK_MODELS,
+    failoverDelayMs: PROVIDER_FAILOVER_DELAY_MS,
     memory: "conversation"
   });
 });
