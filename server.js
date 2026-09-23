@@ -38,7 +38,7 @@ app.get("/api/health", (_req, res) => {
 app.post("/api/chat", apiLimiter, async (req, res) => {
   try {
     if (!process.env.OPENROUTER_API_KEY) {
-      return res.status(500).json({ error: "AI service is not configured yet." });
+      return res.status(500).json({ error: "OPENROUTER_API_KEY is missing. Add it to the root .env file." });
     }
 
     const incoming = Array.isArray(req.body?.messages) ? req.body.messages : [];
