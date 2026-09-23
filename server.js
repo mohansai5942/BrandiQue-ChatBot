@@ -62,7 +62,7 @@ async function callGroq(messages) {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
       messages: buildMessages(messages),
       temperature: 0.35,
       max_tokens: 700
@@ -75,7 +75,7 @@ async function callGroq(messages) {
 
 async function callGemini(messages) {
   if (!process.env.GEMINI_API_KEY) throw new Error("Gemini key not configured");
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
   const system = messages.find((m) => m.role === "system")?.content || SYSTEM_PROMPT;
   const contents = messages
     .filter((m) => m.role !== "system")
@@ -92,7 +92,7 @@ async function callGemini(messages) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents,
-        generationConfig: { temperature: 0.35, maxOutputTokens: 700 }
+        generationConfig: { maxOutputTokens: 700 }
       })
     }
   );
