@@ -301,6 +301,10 @@ function findBuiltInBusinessAnswer(userText, messages = []) {
     return "BrandiQue can help with digital advertising and campaign strategy. The exact approach depends on your business, audience and goal.";
   }
 
+  if (/\b(n8n|n8n workflow|n8n automation)\b/.test(text)) {
+    return "BrandiQue provides n8n-based business automation and workflow solutions, including connecting business processes, automating repetitive tasks, AI-assisted workflows, notifications, lead flows and custom integrations.";
+  }
+
   if (/\b(ai automation|automation|ai chatbot|chatbot)\b/.test(text)) {
     return "BrandiQue builds AI chatbots and business automations, including workflow automation and n8n-based solutions.";
   }
