@@ -2,33 +2,25 @@
 
 Premium AI customer-support chatbot for BrandiQue Web Solutions.
 
-## AI fallback architecture
+## Architecture
 
-The backend tries providers in this order:
+The chatbot uses OpenRouter as its AI provider.
 
-`Groq → Gemini → OpenRouter`
+Business facts that are already verified in the application, such as the founder and published starter prices, are answered directly without an AI request. This makes those answers fast and prevents provider timeouts from breaking basic business questions.
 
-If a provider is unavailable, rate-limited, times out, has a bad key, or returns another API error, the backend automatically tries the next configured provider.
-
-Change the order with:
-
-`PROVIDER_ORDER=groq,gemini,openrouter`
-
-You can also run only the providers for which you have keys. Unconfigured providers are skipped automatically.
+Google Sheets knowledge is optional and is queried only when an exact business fact is not already built into the chatbot.
 
 ## Environment variables
 
 Copy `.env.example` to `.env` locally. For Railway, add the same variables in Railway Variables.
 
-- `GROQ_API_KEY`
-- `GROQ_MODEL`
-- `GEMINI_API_KEY`
-- `GEMINI_MODEL`
-- `OPENROUTER_API_KEY`
-- `OPENROUTER_MODEL`
-- `PROVIDER_ORDER`
-- `SITE_URL`
-- `PORT`
+```env
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_MODEL=openrouter/free
+PORT=3000
+SITE_URL=https://www.brandique.in
+GOOGLE_SHEETS_API_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+```
 
 Never commit `.env` or API keys to GitHub.
 
@@ -43,14 +35,12 @@ Open `http://localhost:3000`.
 
 ## Railway
 
-Deploy this repository as a Node.js service. Railway will use the `start` script:
+Deploy this repository as a Node.js service. Railway will use the `start` script.
 
-```bash
-npm start
-```
-
-Add the provider API keys and configuration under Railway Variables. No API keys belong in the frontend or repository.
+Add the API key and configuration under Railway Variables. No API key belongs in the frontend or repository.
 
 ## Notes
 
-Free API tiers still have provider-specific rate limits. Fallback improves availability; it does not create unlimited inference.
+OpenRouter's `openrouter/free` route selects an available free model. Free usage is rate-limited, so response time can vary.
+
+The server does not contact Google Sheets during startup. Google Sheets is used only when needed, so a Sheets outage cannot stop the chatbot from starting or answering built-in BrandiQue facts.
