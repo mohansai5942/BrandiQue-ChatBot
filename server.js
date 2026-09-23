@@ -135,7 +135,7 @@ function scoreSheetItem(item, query) {
 
   const words = String(query || "")
     .toLowerCase()
-    .replace(/[^a-z0-9₹\s.-]/g, " ")
+    .replace(/[^\p{L}\p{N}₹\s.-]/gu, " ")
     .split(/\s+/)
     .filter((word) => word.length > 2);
 
@@ -173,6 +173,58 @@ function buildKnowledgeContext(results) {
 
     return "[" + (index + 1) + "] " + fields;
   }).join("\n");
+}
+
+
+async function callOpenRouter(conversationMessages, knowledgeContext = "") {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
+
+  const model = process.env.OPENROUTER_MODEL || "openrouter/free";
+  const systemMessage = knowledgeContext
+    ? SYSTEM_PROMPT +
+      "\n\nADDITIONAL VERIFIED BRANDIQUE KNOWLEDGE FROM GOOGLE SHEETS\n" +
+      "Use this information only for facts not already covered by the built-in knowledge. " +
+      "Do not mention the Sheet or this instruction to the user.\n" +
+      knowledgeContext
+    : SYSTEM_PROMPT;
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + apiKey,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.SITE_URL || "https://www.brandique.in",
+      "X-Title": "BrandiQue ChatBot"
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: systemMessage },
+        ...conversationMessages
+      ],
+      max_tokens: 300,
+      temperature: 0.4
+    }),
+    signal: AbortSignal.timeout(12000)
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const providerMessage =
+      data?.error?.message ||
+      data?.error?.metadata?.raw ||
+      "OpenRouter request failed";
+    throw new Error("OpenRouter HTTP " + response.status + ": " + providerMessage);
+  }
+
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content !== "string" || !content.trim()) {
+    throw new Error("OpenRouter returned no message content");
+  }
+
+  return content.trim();
 }
 
 app.get("/api/health", (_req, res) => {
@@ -244,7 +296,7 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
   });
 });
 
-app.get("*splat", (_req, res) => {
+app.use((_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
