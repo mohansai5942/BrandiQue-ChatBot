@@ -360,12 +360,7 @@ function buildKnowledgeContext(results) {
 function isBusinessFactQuestion(text) {
   const value = String(text || "").toLowerCase();
 
-  return /\b(
-    founder|founder name|owner|ceo|director|team|about|company|brandique|
-    contact|phone|mobile|email|address|location|office|website url|domain|
-    price|pricing|cost|package|packages|service price|quotation|quote|
-    portfolio|instagram|telegram|linkedin|social media
-  )\b/x.test(value);
+  return /\b(founder|founder name|owner|ceo|director|team|about|company|brandique|contact|phone|mobile|email|address|location|office|website url|domain|price|pricing|cost|package|packages|service price|quotation|quote|portfolio|instagram|telegram|linkedin|social media)\b/i.test(value);
 }
 
 function buildDirectSheetAnswer(results, userText) {
