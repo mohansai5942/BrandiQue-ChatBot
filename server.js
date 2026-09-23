@@ -122,7 +122,8 @@ const BUSINESS_FACT_PATTERNS = [
   /\b(founder|founder name|founded|who owns|owner|ceo|director)\b/i,
   /\b(about|company|brandique|contact|phone|mobile|email|address|location|office)\b/i,
   /\b(website url|domain|price|pricing|cost|package|packages|service price|quotation|quote)\b/i,
-  /\b(portfolio|instagram|telegram|linkedin|social media|delivery time|maintenance)\b/i
+  /\b(portfolio|instagram|telegram|linkedin|social media|delivery time|maintenance)\b/i,
+  /\b(marketing|digital marketing|seo|search engine optimization|social media marketing|advertising|ai automation|ai chatbot|branding|logo design|brand identity)\b/i
 ];
 
 function isBusinessFactQuestion(text) {
@@ -281,6 +282,31 @@ function findBuiltInBusinessAnswer(userText, messages = []) {
 
   if (/\b(location|office|address)\b/.test(text)) {
     return "BrandiQue Web Solutions is based in Visakhapatnam, India and serves clients globally.";
+  }
+
+  if (/\b(tell me more about marketing|digital marketing|marketing services|what marketing services|marketing)\b/.test(text)) {
+    return "BrandiQue offers digital marketing focused on SEO, social media marketing, advertising and digital growth. If you tell me your business type and goal, I can explain the relevant marketing approach.";
+  }
+
+  if (/^\s*(seo|tell me about seo|what is seo|seo service|i want seo|i need seo)\s*[.!?]*$/i.test(text) ||
+      /\b(technical seo|search engine optimization|seo service)\b/.test(text)) {
+    return "BrandiQue provides Technical SEO to improve a website’s search visibility, structure and crawlability. Technical SEO is included in BrandiQue website builds.";
+  }
+
+  if (/\b(social media marketing|social media)\b/.test(text)) {
+    return "BrandiQue can help with social media marketing, content strategy, audience growth and campaign support.";
+  }
+
+  if (/\b(advertising|ads|paid ads|google ads|meta ads)\b/.test(text)) {
+    return "BrandiQue can help with digital advertising and campaign strategy. The exact approach depends on your business, audience and goal.";
+  }
+
+  if (/\b(ai automation|automation|ai chatbot|chatbot)\b/.test(text)) {
+    return "BrandiQue builds AI chatbots and business automations, including workflow automation and n8n-based solutions.";
+  }
+
+  if (/\b(branding|logo design|brand identity)\b/.test(text)) {
+    return "BrandiQue offers logo design and complete brand identity solutions for businesses and creators.";
   }
 
   return "";
