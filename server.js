@@ -179,10 +179,22 @@ function extractConversationMemory(messages) {
 }
 
 function contextualBusinessAnswer(userText, messages) {
-  const text = String(userText || "").toLowerCase().trim();
+  const text = String(userText || "").trim();
+  const lower = text.toLowerCase();
   const memory = extractConversationMemory(messages);
 
-  if (/\b(do you remember my name|remember my name|what is my name|what's my name)\b/i.test(text)) {
+  const nameMatch =
+    lower.match(/^my name is\s+([a-z][a-z .'-]{1,50})[.!?,]*$/i) ||
+    lower.match(/^call me\s+([a-z][a-z .'-]{1,50})[.!?,]*$/i) ||
+    lower.match(/^i am\s+([a-z][a-z .'-]{1,50})[.!?,]*$/i) ||
+    lower.match(/^i'm\s+([a-z][a-z .'-]{1,50})[.!?,]*$/i);
+
+  if (nameMatch) {
+    const name = nameMatch[1].trim().replace(/[.!?,]+$/, "");
+    return "Nice to meet you, " + name + " 🙂 I’ll remember your name during this conversation.";
+  }
+
+  if (/\b(do you remember my name|remember my name|what is my name|what's my name)\b/i.test(lower)) {
     return memory.name
       ? "Yes 🙂 Your name is " + memory.name + "."
       : "I don’t have your name yet 🙂 Tell me your name and I’ll remember it during this conversation.";
