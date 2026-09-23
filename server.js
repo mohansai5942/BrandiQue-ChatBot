@@ -393,6 +393,35 @@ async function fetchJson(url, options = {}, timeoutMs = 15000) {
   }
 }
 
+const PROVIDER_ORDER = String(process.env.PROVIDER_ORDER || "openrouter,gemini")
+  .split(",")
+  .map((item) => item.trim().toLowerCase())
+  .filter(Boolean);
+
+const PROVIDER_COOLDOWN_MS = Number(process.env.PROVIDER_COOLDOWN_MS || 60 * 60 * 1000);
+const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || 6000);
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 7000);
+
+const providerCooldownUntil = {
+  openrouter: 0,
+  gemini: 0
+};
+
+function isProviderAvailable(provider) {
+  return Date.now() >= Number(providerCooldownUntil[provider] || 0);
+}
+
+function markProviderCooldown(provider, reason = "") {
+  providerCooldownUntil[provider] = Date.now() + PROVIDER_COOLDOWN_MS;
+  console.error(provider + " temporarily disabled:", reason || "provider failure");
+}
+
+function providerIsConfigured(provider) {
+  if (provider === "openrouter") return Boolean(process.env.OPENROUTER_API_KEY);
+  if (provider === "gemini") return Boolean(process.env.GEMINI_API_KEY);
+  return false;
+}
+
 let sheetCache = [];
 let sheetCacheUpdatedAt = 0;
 const SHEET_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -550,7 +579,7 @@ async function callOpenRouter(conversationMessages, knowledgeContext = "", memor
         temperature: 0.4
       })
     },
-    15000
+    OPENROUTER_TIMEOUT_MS
   );
 
   const data = response.data || {};
@@ -565,11 +594,145 @@ async function callOpenRouter(conversationMessages, knowledgeContext = "", memor
   return content.trim();
 }
 
+function buildGeminiContents(conversationMessages) {
+  const contents = [];
+
+  for (const message of conversationMessages) {
+    const role = message.role === "assistant" ? "model" : "user";
+    const text = String(message.content || "").trim();
+    if (!text) continue;
+
+    const last = contents[contents.length - 1];
+    if (last && last.role === role) {
+      last.parts[0].text += "\n" + text;
+    } else {
+      contents.push({
+        role,
+        parts: [{ text }]
+      });
+    }
+  }
+
+  if (contents.length && contents[0].role !== "user") {
+    contents.unshift({
+      role: "user",
+      parts: [{ text: "Continue the conversation naturally." }]
+    });
+  }
+
+  return contents;
+}
+
+async function callGemini(conversationMessages, knowledgeContext = "", memory = {}) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+
+  const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+  const memoryContext = [
+    memory.name ? "User name: " + memory.name : "",
+    memory.lastWebsiteType ? "Current website type in conversation: " + memory.lastWebsiteType : "",
+    memory.lastTopic ? "Current topic: " + memory.lastTopic : ""
+  ].filter(Boolean).join("\n");
+
+  const systemMessage = SYSTEM_PROMPT +
+    (memoryContext ? "\n\nCONVERSATION MEMORY\n" + memoryContext : "") +
+    (knowledgeContext
+      ? "\n\nADDITIONAL VERIFIED BRANDIQUE KNOWLEDGE\nUse these facts when relevant. Do not mention the source.\n" + knowledgeContext
+      : "");
+
+  const response = await fetchJson(
+    "https://generativelanguage.googleapis.com/v1beta/models/" +
+      encodeURIComponent(model) +
+      ":generateContent",
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: systemMessage }]
+        },
+        contents: buildGeminiContents(conversationMessages),
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 300
+        }
+      })
+    },
+    GEMINI_TIMEOUT_MS
+  );
+
+  const data = response.data || {};
+  if (!response.ok) {
+    const providerMessage =
+      data?.error?.message ||
+      data?.error?.status ||
+      "Gemini request failed";
+    throw new Error("Gemini HTTP " + response.status + ": " + providerMessage);
+  }
+
+  const content = data?.candidates?.[0]?.content?.parts
+    ?.map((part) => String(part?.text || ""))
+    .join("")
+    .trim();
+
+  if (!content) {
+    const reason = data?.candidates?.[0]?.finishReason || "no message content";
+    throw new Error("Gemini returned " + reason);
+  }
+
+  return content;
+}
+
+async function callProviderWithFallback(conversationMessages, knowledgeContext = "", memory = {}) {
+  const errors = [];
+
+  for (const provider of PROVIDER_ORDER) {
+    if (!["openrouter", "gemini"].includes(provider)) continue;
+
+    if (!providerIsConfigured(provider)) {
+      errors.push(provider + " is not configured");
+      continue;
+    }
+
+    if (!isProviderAvailable(provider)) {
+      continue;
+    }
+
+    try {
+      const content = provider === "gemini"
+        ? await callGemini(conversationMessages, knowledgeContext, memory)
+        : await callOpenRouter(conversationMessages, knowledgeContext, memory);
+
+      const cleaned = cleanProviderOutput(content);
+      if (cleaned) return cleaned;
+
+      throw new Error(provider + " returned empty content");
+    } catch (error) {
+      const message = error?.message || String(error);
+      errors.push(provider + ": " + message);
+
+      if (/HTTP 429|HTTP 408|HTTP 5\d\d|timeout|temporarily unavailable|quota|rate limit/i.test(message)) {
+        markProviderCooldown(provider, message);
+      }
+
+      console.error(provider + " request failed:", message);
+    }
+  }
+
+  throw new Error(errors.join(" | ") || "No AI provider available");
+}
+
 app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     service: "brandique-chatbot",
-    provider: "openrouter",
+    providers: PROVIDER_ORDER,
+    openrouterConfigured: Boolean(process.env.OPENROUTER_API_KEY),
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    geminiModel: process.env.GEMINI_MODEL || "gemini-3.6-flash",
     memory: "conversation"
   });
 });
@@ -604,8 +767,10 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
 
       if (sheetResults.length) {
         try {
-          const answer = cleanProviderOutput(
-            await callOpenRouter(messages, buildKnowledgeContext(sheetResults), memory)
+          const answer = await callProviderWithFallback(
+            messages,
+            buildKnowledgeContext(sheetResults),
+            memory
           );
           if (answer) return res.json({ message: answer });
         } catch (error) {
@@ -615,10 +780,10 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
     }
 
     try {
-      const answer = cleanProviderOutput(await callOpenRouter(messages, "", memory));
+      const answer = await callProviderWithFallback(messages, "", memory);
       if (answer) return res.json({ message: answer });
     } catch (error) {
-      console.error("OpenRouter request failed:", error?.message || error);
+      console.error("AI provider fallback failed:", error?.message || error);
     }
   } catch (error) {
     console.error("Chat request failed:", error?.message || error);
@@ -633,6 +798,8 @@ app.use((_req, res) => {
 
 app.listen(PORT, () => {
   console.log("BrandiQue ChatBot running on port " + PORT);
+  console.log("Provider order:", PROVIDER_ORDER.join(" -> "));
   console.log("OpenRouter model:", process.env.OPENROUTER_MODEL || "openrouter/free");
+  console.log("Gemini model:", process.env.GEMINI_MODEL || "gemini-3.6-flash");
   console.log("Google Sheets knowledge:", process.env.GOOGLE_SHEETS_API_URL ? "enabled on demand" : "not configured");
 });
