@@ -5,7 +5,7 @@ const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
 const suggestions = document.getElementById("suggestions");
 
-const STORAGE_KEY = "brandique_darling_chat_history";
+const STORAGE_KEY = "brandique_darling_chat_history_v3";
 const API_BASE = window.location.hostname.endsWith("github.io")
   ? "https://brandique-chatbot.vercel.app"
   : "";
@@ -76,11 +76,18 @@ function addTyping() {
 
 function formatMessage(value) {
   const div = document.createElement("div");
-  div.textContent = value;
-  const escaped = div.innerHTML;
-  return escaped
+  div.textContent = String(value || "");
+  let text = div.innerHTML
+    .replace(/\r\n?/g, "\n")
+    .replace(/\n{3,}/g, "\n\n");
+
+  text = text
     .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|\n)\s*[•*]\s+/g, "$1");
+    .replace(/(^|\n)\s*[-*•]\s+/g, "$1• ")
+    .replace(/([:\.!?])\s+(?=\d+\.\s+[A-Z₹])/g, "$1\n")
+    .replace(/\s+(?=\d+\.\s+[A-Z₹])/g, "\n");
+
+  return text.trim();
 }
 
 function setLoading(loading) {
