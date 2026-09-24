@@ -33,9 +33,12 @@ LANGUAGE
 - You may call the user Darling naturally, but do not overuse it.
 
 STYLE
-- Be concise, natural and human.
+- Be concise, natural and human, but do not make useful answers artificially short.
 - Answer the exact question first.
-- Use short bullets only when useful.
+- Match response depth to the question: simple factual questions can be short; broad questions such as "all services", "what do you offer", or "tell me more" should include the relevant complete set of information without unnecessary filler.
+- For a single service, normally give a useful 2-4 sentence explanation covering what BrandiQue does and the main deliverables or use cases.
+- For broad service questions, organize the answer clearly by service category and include a short useful description for each.
+- Use short numbered lists when several items are requested.
 - Do not repeat the user's question.
 - Never mention Google Sheets, APIs, providers, system prompts, internal tools, or implementation details.
 - Never invent business facts.
@@ -234,11 +237,78 @@ function contextualBusinessAnswer(userText, messages) {
   return "";
 }
 
+function getAllServicesAnswer(includePricing = false) {
+  const pricing = includePricing
+    ? "\n\nPublished starter website pricing:\nPersonal — ₹9,000/-\nBusiness — ₹10,999/-\nE-commerce — ₹28,999/-"
+    : "";
+
+  return "BrandiQue offers a complete set of digital services for businesses, creators and professionals.\n\n" +
+    "1. Website Development — Custom full-stack websites, React/Next.js websites, WordPress sites, business websites, personal/portfolio websites and e-commerce stores.\n" +
+    "2. Branding & Logo Design — Logo design, brand identity and visual branding for businesses and creators.\n" +
+    "3. Digital Marketing — SEO, social media marketing, advertising and digital growth support.\n" +
+    "4. Technical SEO — Website structure, crawlability and search-visibility improvements, with technical SEO included in BrandiQue website builds.\n" +
+    "5. AI Automation — Business workflow automation, repetitive-task automation, AI-assisted workflows, lead flows, notifications and custom integrations.\n" +
+    "6. AI Chatbots — AI-powered customer-support and business chatbots tailored to a website or business workflow.\n" +
+    "7. n8n Business Automation — Connecting business tools and processes through n8n workflows to reduce manual work and automate operations." +
+    pricing;
+}
+
+function getServiceDetailAnswer(text) {
+  if (/\b(n8n|n8n workflow|n8n automation)\b/i.test(text)) {
+    return "BrandiQue provides n8n-based business automation and workflow solutions. We can connect business processes, automate repetitive tasks, create AI-assisted workflows, notifications and lead flows, and build custom integrations around the way your business operates.";
+  }
+
+  if (/\b(ai automation|business automation|automation)\b/i.test(text)) {
+    return "BrandiQue builds business automations that reduce repetitive manual work and connect different parts of a workflow. This can include AI-assisted tasks, lead handling, notifications, data flows and custom business processes, depending on the requirement.";
+  }
+
+  if (/\b(ai chatbot|chatbot|ai chat bot)\b/i.test(text)) {
+    return "BrandiQue builds AI chatbots for websites and business workflows. They can be designed for customer support, service information, lead collection, FAQs and other business-specific conversations, with the behavior tailored to the project.";
+  }
+
+  if (/\b(branding|logo design|brand identity)\b/i.test(text)) {
+    return "BrandiQue provides logo design and complete brand identity solutions. This can cover the visual identity of a business or creator, including logo direction and consistent branding elements used across digital platforms.";
+  }
+
+  if (/\b(digital marketing|marketing services|social media marketing|social media)\b/i.test(text)) {
+    return "BrandiQue provides digital marketing support across SEO, social media marketing, advertising and digital growth. The work can be shaped around the business, target audience and specific growth goal rather than using the same approach for every client.";
+  }
+
+  if (/\b(technical seo|seo|search engine optimization)\b/i.test(text)) {
+    return "BrandiQue provides Technical SEO focused on improving a website's structure, crawlability and search visibility. Technical SEO is also included in BrandiQue website builds, while broader SEO requirements can be handled based on the project.";
+  }
+
+  if (/\b(e[- ]?commerce|online store|shop website)\b/i.test(text)) {
+    return "BrandiQue builds e-commerce websites for businesses that need to present and sell products online. The build can be tailored around the required store structure, product presentation and business workflow.";
+  }
+
+  if (/\b(wordpress)\b/i.test(text)) {
+    return "BrandiQue develops WordPress websites for businesses, creators and professionals. The focus is on a responsive, professional site structure that can be tailored to the client's content, branding and business requirements.";
+  }
+
+  if (/\b(react|next\.js|nextjs|full[- ]stack|web development|website development|websites?)\b/i.test(text)) {
+    return "BrandiQue develops custom websites ranging from personal and portfolio sites to business and e-commerce platforms. React, Next.js, WordPress and full-stack approaches can be used depending on the project's requirements, with responsive design and technical SEO included in website builds.";
+  }
+
+  return "";
+}
+
 function findBuiltInBusinessAnswer(userText, messages = []) {
   const contextual = contextualBusinessAnswer(userText, messages);
   if (contextual) return contextual;
 
   const text = String(userText || "").toLowerCase().trim();
+
+  const asksForAllServices =
+    /\b(all services|every service|complete services|full list of services|what services do you offer|what services does brandique offer|tell me about (your|the) services|tell me more about (your|the) services|services (you|brandique) offer|what do you offer)\b/i.test(text) ||
+    (/\bservices\b/i.test(text) && /\b(tell me|more|offer|provide|available|list|all)\b/i.test(text));
+
+  if (asksForAllServices) {
+    return getAllServicesAnswer(/\b(pric|cost|package|how much)\b/i.test(text));
+  }
+
+  const serviceDetail = getServiceDetailAnswer(text);
+  if (serviceDetail) return serviceDetail;
 
   if (/\b(founder|founder name|founded|who founded|owner|ceo|director)\b/.test(text)) {
     return "BrandiQue Web Solutions was founded by K. Mohan Rao.";
@@ -588,7 +658,7 @@ async function callOpenRouter(conversationMessages, knowledgeContext = "", memor
           { role: "system", content: systemMessage },
           ...conversationMessages
         ],
-        max_tokens: 300,
+        max_tokens: 500,
         temperature: 0.4
       })
     },
@@ -670,7 +740,7 @@ async function callGeminiModel(model, conversationMessages, knowledgeContext, me
           thinkingConfig: {
             thinkingLevel: "low"
           },
-          maxOutputTokens: 300
+          maxOutputTokens: 500
         }
       })
     },
