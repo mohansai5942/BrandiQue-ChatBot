@@ -95,6 +95,11 @@ footer a:hover { color:#aaa; }
 
 
 /* Embedded chatbot mode */
+html.embed-mode {
+  --accent: #7c3aed;
+  --accent-2: #06b6d4;
+  --accent-ink: #ffffff;
+}
 html.embed-mode, html.embed-mode body { width:100%; height:100%; min-height:100%; }
 html.embed-mode body { overflow:hidden; }
 html.embed-mode .app-shell { width:100%; min-height:100%; height:100%; padding:0; }
@@ -110,6 +115,23 @@ html.embed-mode .chat-card {
   border:0;
   border-radius:0;
   box-shadow:none;
-  background:#0d0d0d;
+  background:#0a0a0f;
 }
 html.embed-mode .chat-head { padding:15px 18px; }
+html.embed-mode .agent-avatar {
+  background:linear-gradient(135deg,#7c3aed,#2563eb,#06b6d4);
+  color:#fff;
+}
+html.embed-mode #sendBtn {
+  background:linear-gradient(135deg,#7c3aed,#2563eb,#06b6d4);
+  color:#fff;
+}
+html.embed-mode .user .bubble {
+  background:linear-gradient(135deg,#7c3aed,#2563eb);
+  color:#fff;
+}
+html.embed-mode .suggestions button:hover {
+  border-color:rgba(6,182,212,.5);
+  background:rgba(124,58,237,.12);
+}
+
