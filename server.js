@@ -18,7 +18,7 @@ app.use(helmet({
 app.use((_req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    "frame-ancestors 'self' https://www.brandique.in https://brandique.in"
+    "frame-ancestors 'self' https://www.brandique.in https://brandique.in https://aistudio.google.com https://*.aistudio.google.com"
   );
   next();
 });
