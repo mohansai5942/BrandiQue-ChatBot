@@ -6,6 +6,9 @@ const clearBtn = document.getElementById("clearBtn");
 const suggestions = document.getElementById("suggestions");
 
 const STORAGE_KEY = "brandique_chat_history_v2";
+const API_BASE = window.location.hostname.endsWith("github.io")
+  ? "https://brandique-chatbot.vercel.app"
+  : "";
 let history = loadHistory();
 
 function loadHistory() {
@@ -88,7 +91,7 @@ async function sendMessage(text) {
   const typing = addTyping();
 
   try {
-    const response = await fetch("/api/chat", {
+    const response = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: history.slice(-20) })
