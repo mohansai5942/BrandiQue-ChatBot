@@ -879,6 +879,7 @@ app.use((_req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+if (!process.env.VERCEL) {
 app.listen(PORT, () => {
   console.log("BrandiQue ChatBot running on port " + PORT);
   console.log("Provider order:", PROVIDER_ORDER.join(" -> "));
@@ -886,3 +887,6 @@ app.listen(PORT, () => {
   console.log("Gemini models:", [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS].join(" -> "));
   console.log("Google Sheets knowledge:", process.env.GOOGLE_SHEETS_API_URL ? "enabled on demand" : "not configured");
 });
+}
+
+module.exports = app;
