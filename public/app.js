@@ -13,8 +13,21 @@ let history = loadHistory();
 
 function loadHistory() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    let raw = localStorage.getItem(STORAGE_KEY);
+
+    // Migrate the previous local-only history key once.
+    if (!raw) {
+      const legacyRaw = localStorage.getItem("brandique_chat_history_v2");
+      if (legacyRaw) {
+        raw = legacyRaw;
+        localStorage.setItem(STORAGE_KEY, legacyRaw);
+        localStorage.removeItem("brandique_chat_history_v2");
+      }
+    }
+
+    const saved = JSON.parse(raw || "[]");
     if (!Array.isArray(saved)) return [];
+
     return saved
       .filter((message) =>
         message &&
