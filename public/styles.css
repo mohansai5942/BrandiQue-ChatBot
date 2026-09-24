@@ -92,3 +92,24 @@ footer a:hover { color:#aaa; }
   .suggestions { overflow:auto; flex-wrap:nowrap; }
   .composer-meta span:last-child { display:none; }
 }
+
+
+/* Embedded chatbot mode */
+html.embed-mode, html.embed-mode body { width:100%; height:100%; min-height:100%; }
+html.embed-mode body { overflow:hidden; }
+html.embed-mode .app-shell { width:100%; min-height:100%; height:100%; padding:0; }
+html.embed-mode .ambient,
+html.embed-mode .topbar,
+html.embed-mode .hero-panel,
+html.embed-mode footer { display:none; }
+html.embed-mode .chat-layout { display:block; width:100%; max-width:none; min-height:100%; height:100%; margin:0; }
+html.embed-mode .chat-card {
+  width:100%;
+  height:100%;
+  min-height:0;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  background:#0d0d0d;
+}
+html.embed-mode .chat-head { padding:15px 18px; }
