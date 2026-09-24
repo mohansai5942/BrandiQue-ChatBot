@@ -415,7 +415,17 @@ function cleanProviderOutput(content) {
   if (forbidden.test(text)) return "";
 
   text = text.replace(/^\s*(assistant|response)\s*:\s*/i, "");
-  return text.trim();
+
+  // Normalize common AI list formatting before it reaches the frontend.
+  // This prevents numbered service lists from becoming one long paragraph.
+  text = text
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+(?=\d+\.\s+[A-Z₹])/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return text;
 }
 
 function safeFallback(userText, messages = []) {
