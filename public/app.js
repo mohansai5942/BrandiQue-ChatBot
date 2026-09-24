@@ -5,7 +5,7 @@ const sendBtn = document.getElementById("sendBtn");
 const clearBtn = document.getElementById("clearBtn");
 const suggestions = document.getElementById("suggestions");
 
-const STORAGE_KEY = "brandique_chat_history_v2";
+const STORAGE_KEY = "brandique_darling_chat_history";
 const API_BASE = window.location.hostname.endsWith("github.io")
   ? "https://brandique-chatbot.vercel.app"
   : "";
@@ -136,6 +136,9 @@ document.querySelectorAll("[data-prompt]").forEach((btn) => {
 });
 
 clearBtn.addEventListener("click", () => {
+  const confirmed = window.confirm("Clear your Darling AI chat history from this browser?");
+  if (!confirmed) return;
+
   history = [];
   localStorage.removeItem(STORAGE_KEY);
   messagesEl.innerHTML = "";
