@@ -20,6 +20,10 @@ app.use((_req, res, next) => {
     "Content-Security-Policy",
     "frame-ancestors 'self' https://www.brandique.in https://brandique.in https://aistudio.google.com https://*.aistudio.google.com"
   );
+  res.setHeader("Access-Control-Allow-Origin", "https://www.brandique.in");
+  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (_req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
 app.use(express.json({ limit: "1mb" }));
