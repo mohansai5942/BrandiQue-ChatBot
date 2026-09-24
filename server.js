@@ -8,7 +8,20 @@ const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: false,
+  frameguard: false
+}));
+
+// Allow the chatbot to be embedded by the BrandiQue website.
+// CSP frame-ancestors controls which parent pages may frame this application.
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "frame-ancestors 'self' https://www.brandique.in https://brandique.in"
+  );
+  next();
+});
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
