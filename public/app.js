@@ -77,15 +77,23 @@ function addTyping() {
 function formatMessage(value) {
   const div = document.createElement("div");
   div.textContent = String(value || "");
+
   let text = div.innerHTML
     .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
     .replace(/\n{3,}/g, "\n\n");
 
   text = text
     .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|\n)\s*[-*•]\s+/g, "$1• ")
-    .replace(/([:\.!?])\s+(?=\d+\.\s+[A-Z₹])/g, "$1\n")
-    .replace(/\s+(?=\d+\.\s+[A-Z₹])/g, "\n");
+    .replace(/(^|\n)\s*[-*•]\s+/g, "$1• ");
+
+  // Force numbered answers into real separate lines even when the AI
+  // returns the entire list as one paragraph.
+  text = text.replace(/\s+(?=(?:\d+|[•])\.\s+)/g, "\n");
+  text = text.replace(/\s+(?=\d+\.\s+[A-Z₹])/g, "\n");
+
+  // Preserve a readable gap before a final follow-up sentence.
+  text = text.replace(/\n([A-Z][^\n]{0,120}[.!?])\s+(?=Let me|If you|Tell me|Would you|Which|Do you)/g, "\n$1\n\n");
 
   return text.trim();
 }
