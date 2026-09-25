@@ -34,10 +34,6 @@ function loadHistory() {
         (message.role === "user" || message.role === "assistant") &&
         typeof message.content === "string"
       )
-      .map((message) => ({
-        ...message,
-        time: Number(message.time) || Date.now()
-      }))
       .slice(-40);
   } catch (_error) {
     return [];
@@ -58,23 +54,10 @@ function addMessage(role, content, options = {}) {
   const row = document.createElement("div");
   row.className = `message-row ${role}`;
 
-  const time = options.time || new Date();
-  const timestamp = time.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit"
-  }).toLowerCase();
-
   if (role === "assistant" && options.welcome) {
-    row.innerHTML = `
-      <div class="bubble welcome">
-        <h2>How can I help?</h2>
-        <p>${formatMessage(content)}</p>
-      </div>
-      <time class="message-time">${timestamp}</time>`;
+    row.innerHTML = `<div class="bubble welcome"><h2>How can I help?</h2><p>${formatMessage(content)}</p></div>`;
   } else {
-    row.innerHTML = `
-      <div class="bubble">${formatMessage(content)}</div>
-      <time class="message-time">${timestamp}</time>`;
+    row.innerHTML = `<div class="bubble">${formatMessage(content)}</div>`;
   }
 
   messagesEl.appendChild(row);
@@ -125,9 +108,8 @@ async function sendMessage(text) {
   if (!trimmed || sendBtn.disabled) return;
 
   suggestions.style.display = "none";
-  const userTime = Date.now();
-  addMessage("user", trimmed, { time: userTime });
-  history.push({ role: "user", content: trimmed, time: userTime });
+  addMessage("user", trimmed);
+  history.push({ role: "user", content: trimmed });
   saveHistory();
 
   input.value = "";
@@ -148,10 +130,9 @@ async function sendMessage(text) {
 
     if (!response.ok) throw new Error(data?.error || "Unable to get a response.");
 
-    const assistantTime = Date.now();
-    history.push({ role: "assistant", content: data.message, time: assistantTime });
+    history.push({ role: "assistant", content: data.message });
     saveHistory();
-    addMessage("assistant", data.message, { time: assistantTime });
+    addMessage("assistant", data.message);
   } catch (error) {
     typing.remove();
     addMessage("assistant", error.message || "Something went wrong. Please try again.");
@@ -211,7 +192,7 @@ function restoreChat() {
   suggestions.style.display = "none";
 
   for (const message of history) {
-    addMessage(message.role, message.content, { time: message.time });
+    addMessage(message.role, message.content);
   }
 }
 
