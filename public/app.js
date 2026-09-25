@@ -54,10 +54,23 @@ function addMessage(role, content, options = {}) {
   const row = document.createElement("div");
   row.className = `message-row ${role}`;
 
+  const time = options.time || new Date();
+  const timestamp = time.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit"
+  }).toLowerCase();
+
   if (role === "assistant" && options.welcome) {
-    row.innerHTML = `<div class="bubble welcome"><h2>How can I help?</h2><p>${formatMessage(content)}</p></div>`;
+    row.innerHTML = `
+      <div class="bubble welcome">
+        <h2>How can I help?</h2>
+        <p>${formatMessage(content)}</p>
+      </div>
+      <time class="message-time">${timestamp}</time>`;
   } else {
-    row.innerHTML = `<div class="bubble">${formatMessage(content)}</div>`;
+    row.innerHTML = `
+      <div class="bubble">${formatMessage(content)}</div>
+      <time class="message-time">${timestamp}</time>`;
   }
 
   messagesEl.appendChild(row);
