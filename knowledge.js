@@ -99,6 +99,8 @@ TERMS
 - Extra costs (domain, hosting, plugins, API/AI usage, ad spend, taxes) are told upfront.
 
 VISITOR MEMORY
+- The visitor's own name can be any name, including Mohan or Praveen. Treat it only as the visitor's name and greet them normally; never connect it to BrandiQue's founder or team.
+- Talk about the founder only when the visitor asks who founded, owns or leads BrandiQue (or asks about a person in the company).
 - Known visitor details (name, business, city, phone, email) are given below when available. Use their name naturally and use their details to tailor answers. Never ask again for a detail you already have.
 
 RULES
@@ -108,23 +110,35 @@ RULES
 - Off-topic questions: politely say you help with BrandiQue's websites, AI automation and design.
 `;
 
+// A person's name on its own is never a founder question: visitors can be called Mohan or Praveen too.
+// Only questions about BrandiQue's founder / owner / leadership, or "who is <name>" asked about the company, count.
+const ASK_WHO = "(who\\s+is|who's|whos|who|tell me about|about|evaru|evvaru|gurinchi|ante evaru)";
+function askedAboutPerson(t, nameRe) {
+  return new RegExp(
+    "\\b" + ASK_WHO + "\\b[^.?!]{0,20}\\b" + nameRe + "\\b" +
+    "|\\b" + nameRe + "\\b[^.?!]{0,30}\\b(evaru|evvaru|gurinchi|in (your|the) (company|team|website|site)|at brandique|work(s|ing)? (at|for|in)|part of|mi company|mee company|mi website|mee website|company lo|website lo|team lo)\\b" +
+    "|\\b(is|does)\\s+" + nameRe + "\\b[^.?!]{0,30}\\b(brandique|company|team|founder|owner|partner|work)", "i"
+  ).test(t);
+}
+
 function isFounderQuestion(t) {
-  const strong = /\b(co[- ]?founders?|cofounders?|founders?|founded|praveen|karri|ceo|c\.e\.o|mohan|kutikuppala|proprietor|chairman)\b/i;
+  const strong = /\b(co[- ]?founders?|cofounders?|founders?|founded|ceo|c\.e\.o|proprietor|chairman)\b/i;
   if (strong.test(t)) return true;
+  if (askedAboutPerson(t, "(mohan|kutikuppala|k\\.?\\s?mohan)") || askedAboutPerson(t, "(praveen|karri)")) return true;
   const weak = "(owners?|partners?|directors?|md|managing director|boss|team members?|team|staff|employees|head)";
   return new RegExp(
     "\\b(who|evaru|evvaru)\\b.{0,25}\\b" + weak + "\\b" +
     "|\\b" + weak + "\\b.{0,25}\\b(evaru|evvaru|of brandique|of the company|of your company|behind brandique)\\b" +
-    "|\\b(your|brandique'?s?|the company'?s?)\\s+" + weak + "\\b" +
+    "|\\b(your|brandique'?s?|the company'?s?|mi|mee|meeru)\\s+" + weak + "\\b" +
     "|\\bwho (started|created|runs|leads|built|made|owns|is behind)\\b", "i"
   ).test(t);
 }
 
 function founderAnswer(t) {
-  if (/\b(praveen|karri)\b/i.test(t)) {
+  if (askedAboutPerson(t, "(praveen|karri)")) {
     return {
-      message: "- I can only share information about BrandiQue's founder, **K. Mohan Rao**.\n" +
-        "- BrandiQue Web Solutions has one founder and **no co-founders**.\n" +
+      message: "- There is **no one named Praveen** at BrandiQue Web Solutions.\n" +
+        "- BrandiQue has **one founder: K. Mohan Rao**, and no co-founders.\n" +
         "- Want to know about our services or start a project?",
       links: links("about", "contact")
     };
@@ -406,8 +420,10 @@ function toBullets(text) {
 }
 
 // Absolute safety net: no co-founder / other-person claims ever leave the server.
-function violatesFounderRule(text) {
-  const t = String(text || "").toLowerCase();
+function violatesFounderRule(text, visitorName = "") {
+  let t = String(text || "").toLowerCase();
+  const own = String(visitorName || "").toLowerCase().trim();
+  if (own) for (const part of own.split(/\s+/)) if (part.length > 2) t = t.split(part).join("visitor");
   if (/praveen|karri/.test(t)) return true;
   if (/co[- ]?founder/.test(t) && !/no co[- ]?founders?|not have (any )?co[- ]?founders?|without (any )?co[- ]?founders?|zero co[- ]?founders?/.test(t)) return true;
   return false;
@@ -426,6 +442,12 @@ function extractProfile(text, base = {}) {
   const name = t.match(/\b(?:my name is|my name's|call me|naa peru|na peru)\s+([A-Za-z][A-Za-z.'-]{1,20}(?:\s+[A-Za-z][A-Za-z.'-]{1,20})?)/i);
   if (name && !/^(a|an|the|looking|interested|from|here|going|not|very|so|ok)$/i.test(name[1].split(/\s+/)[0])) {
     profile.name = name[1].replace(/\s+(and|from|here|i|my|nenu|ki)$/i, "").trim().replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  const intro = t.match(/(?:^|[\s,!.])(?:i am|i'm|im|iam|this is|nenu)\s+([A-Za-z][A-Za-z.'-]{1,20}(?:\s+[A-Za-z][A-Za-z.'-]{1,20})?)\s*(?:$|[,.!?]|\s+(?:here|and|from|nenu|ni)\b)/i);
+  const NOT_NAME = /^(a|an|the|looking|interested|from|here|going|not|very|so|ok|okay|fine|good|great|new|planning|starting|trying|searching|owner|student|doctor|running|having|building|unable|also|just|ready|sure|confused|asking|waiting|happy|well|back|done|thinking|website|business|freelancer|developer|designer|kavali|cheppu)$/i;
+  if (!name && intro && !NOT_NAME.test(intro[1].split(/\s+/)[0])) {
+    const words = intro[1].split(/\s+/).filter((w) => !NOT_NAME.test(w));
+    if (words.length) profile.name = words.join(" ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
   const phone = t.match(/(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b/);
   if (phone) profile.phone = phone[0].replace(/[\s-]/g, "");

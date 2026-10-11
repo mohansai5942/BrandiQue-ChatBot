@@ -69,9 +69,9 @@ function contextualAnswer(userText, messages, profile = {}) {
       ? { message: "Yes 🙂 your name is **" + profile.name + "**.", links: [] }
       : { message: "I don't have your name yet 🙂 Tell me and I'll remember it.", links: [] };
   }
-  const intro = text.match(/^(?:hi|hello|hey)?[,! ]*(?:my name is|call me|naa peru|na peru|i am|i'm)\s+([a-z][a-z .'-]{1,40})[.!?,]*$/i);
-  if (intro) {
-    const name = profile.name || intro[1].trim();
+  const intro = text.match(/^(?:hi+|hello|hey|namaste|namaskaram)?[,! ]*(?:my name is|call me|naa peru|na peru|i am|i'm|im|iam|this is|nenu)\s+([a-z][a-z .'-]{1,40}?)(?:\s+(?:here|nenu))?[.!?,]*$/i);
+  if (intro && profile.name) {
+    const name = profile.name;
     return { message: "Nice to meet you, **" + name + "** 🙂 How can I help: a website, AI automation or design?", links: [] };
   }
   return null;
@@ -524,7 +524,9 @@ async function callProviderWithFallback(conversationMessages, knowledgeContext =
         : await callOpenRouter(conversationMessages, knowledgeContext, memory);
 
       const cleaned = cleanProviderOutput(content);
-      if (cleaned && violatesFounderRule(cleaned.message)) return founderAnswer("");
+      const lastUser = [...conversationMessages].reverse().find((m) => m.role === "user")?.content || "";
+      const mentioned = (lastUser.match(/\b(praveen|karri)\b/gi) || []).join(" ");
+      if (cleaned && violatesFounderRule(cleaned.message, [memory?.name, mentioned].filter(Boolean).join(" "))) return founderAnswer("");
       if (cleaned) return cleaned;
 
       throw new Error(provider + " returned empty content");
@@ -601,6 +603,8 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
   const memory = { ...extractConversationMemory(messages), ...profile };
 
   try {
+    const personal = contextualAnswer(userText, messages, profile);
+    if (personal) return send(personal);
     if (isFounderQuestion(userText)) return send(founderAnswer(userText));
 
     const direct = findBuiltInBusinessAnswer(userText, messages, profile);
