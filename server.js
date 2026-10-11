@@ -39,7 +39,7 @@ const apiLimiter = rateLimit({
 
 const {
   SYSTEM_PROMPT, ANSWERS, matchIntent, inferLinks, extractLinks, toBullets,
-  violatesFounderRule, founderAnswer, isFounderQuestion
+  violatesFounderRule, founderAnswer, isFounderQuestion, wantsLinks, extractProfile
 } = require("./knowledge");
 
 const BUSINESS_FACT_PATTERNS = [/\b(price|pricing|cost|package|service|quote)\b/i];
@@ -62,24 +62,23 @@ function extractConversationMemory(messages) {
   return memory;
 }
 
-function contextualAnswer(userText, messages) {
+function contextualAnswer(userText, messages, profile = {}) {
   const text = String(userText || "").trim();
-  const nameMatch = text.match(/^(?:my name is|call me|i am|i'm|naa peru|na peru)\s+([a-z][a-z .'-]{1,40})[.!?,]*$/i);
-  if (nameMatch) {
-    const name = nameMatch[1].trim();
-    return { message: "- Nice to meet you, **" + name + "** 🙂\n- How can I help: a website, AI automation or design?", links: [] };
+  if (/\b(remember my name|what is my name|what's my name|who am i|naa peru enti|na peru enti|naa peru gurtunda)\b/i.test(text)) {
+    return profile.name
+      ? { message: "Yes 🙂 your name is **" + profile.name + "**.", links: [] }
+      : { message: "I don't have your name yet 🙂 Tell me and I'll remember it.", links: [] };
   }
-  if (/\b(remember my name|what is my name|what's my name|naa peru enti|na peru enti)\b/i.test(text)) {
-    const memory = extractConversationMemory(messages.slice(0, -1));
-    return memory.name
-      ? { message: "- Yes 🙂 your name is **" + memory.name + "**.", links: [] }
-      : { message: "- I don't have your name yet 🙂 Tell me and I'll remember it in this chat.", links: [] };
+  const intro = text.match(/^(?:hi|hello|hey)?[,! ]*(?:my name is|call me|naa peru|na peru|i am|i'm)\s+([a-z][a-z .'-]{1,40})[.!?,]*$/i);
+  if (intro) {
+    const name = profile.name || intro[1].trim();
+    return { message: "Nice to meet you, **" + name + "** 🙂 How can I help: a website, AI automation or design?", links: [] };
   }
   return null;
 }
 
-function findBuiltInBusinessAnswer(userText, messages = []) {
-  return contextualAnswer(userText, messages) || matchIntent(userText);
+function findBuiltInBusinessAnswer(userText, messages = [], profile = {}) {
+  return contextualAnswer(userText, messages, profile) || matchIntent(userText);
 }
 
 function cleanProviderOutput(content) {
@@ -299,7 +298,11 @@ async function callOpenRouter(conversationMessages, knowledgeContext = "", memor
 
   const model = process.env.OPENROUTER_MODEL || "openrouter/free";
   const memoryContext = [
-    memory.name ? "User name: " + memory.name : "",
+    memory.name ? "Visitor name: " + memory.name : "",
+    memory.business ? "Visitor business: " + memory.business : "",
+    memory.city ? "Visitor city: " + memory.city : "",
+    memory.phone ? "Visitor phone: " + memory.phone : "",
+    memory.email ? "Visitor email: " + memory.email : "",
     memory.lastTopic ? "Current topic: " + memory.lastTopic : ""
   ].filter(Boolean).join("\n");
 
@@ -377,7 +380,11 @@ async function callGeminiModel(model, conversationMessages, knowledgeContext, me
   const apiKey = process.env.GEMINI_API_KEY;
 
   const memoryContext = [
-    memory.name ? "User name: " + memory.name : "",
+    memory.name ? "Visitor name: " + memory.name : "",
+    memory.business ? "Visitor business: " + memory.business : "",
+    memory.city ? "Visitor city: " + memory.city : "",
+    memory.phone ? "Visitor phone: " + memory.phone : "",
+    memory.email ? "Visitor email: " + memory.email : "",
     memory.lastTopic ? "Current topic: " + memory.lastTopic : ""
   ].filter(Boolean).join("\n");
 
@@ -557,6 +564,15 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+function sanitizeProfile(raw) {
+  const out = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const key of ["name", "business", "city", "phone", "email"]) {
+    if (typeof raw[key] === "string" && raw[key].trim()) out[key] = raw[key].trim().slice(0, 80);
+  }
+  return out;
+}
+
 app.post("/api/chat", apiLimiter, async (req, res) => {
   const incoming = Array.isArray(req.body?.messages) ? req.body.messages : [];
 
@@ -569,51 +585,38 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
     .slice(-16)
     .map((message) => ({ role: message.role, content: message.content.slice(0, 2000) }));
 
-  const send = (answer) => res.json({ message: answer.message, links: answer.links || [] });
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === "user");
+  const userText = latestUserMessage?.content || "";
+  const profile = extractProfile(userText, sanitizeProfile(req.body?.profile));
+  const showLinks = wantsLinks(userText);
+
+  const send = (answer) => res.json({
+    message: answer.message,
+    links: showLinks ? (answer.links || []) : [],
+    profile
+  });
 
   if (!messages.length) return send(ANSWERS.greeting);
 
-  const latestUserMessage = [...messages].reverse().find((message) => message.role === "user");
-  const userText = latestUserMessage?.content || "";
-  const memory = extractConversationMemory(messages);
+  const memory = { ...extractConversationMemory(messages), ...profile };
 
   try {
     if (isFounderQuestion(userText)) return send(founderAnswer(userText));
 
-    const direct = findBuiltInBusinessAnswer(userText, messages);
+    const direct = findBuiltInBusinessAnswer(userText, messages, profile);
     const detailed = userText.trim().split(/\s+/).length > 8;
 
-    // Short questions get the verified answer instantly; longer, specific questions
+    // Short questions get the verified answer instantly; longer or personalised questions
     // get a tailored AI answer grounded in the same knowledge, falling back to the verified one.
-    if (direct && !detailed) return send(direct);
-    if (direct && detailed) {
-      try {
-        const answer = await callProviderWithFallback(messages, "", memory);
-        if (answer) return send(answer);
-      } catch (error) {
-        console.error("Detailed answer failed:", error?.message || error);
-      }
-      return send(direct);
-    }
-
-    if (isBusinessFactQuestion(userText)) {
-      const sheetResults = await getSheetKnowledge(userText);
-      if (sheetResults.length) {
-        try {
-          const answer = await callProviderWithFallback(messages, buildKnowledgeContext(sheetResults), memory);
-          if (answer) return send(answer);
-        } catch (error) {
-          console.error("Sheet answer generation failed:", error?.message || error);
-        }
-      }
-    }
+    if (direct && (!detailed || direct.links.length === 0)) return send(direct);
 
     try {
       const answer = await callProviderWithFallback(messages, "", memory);
       if (answer) return send(answer);
     } catch (error) {
-      console.error("AI provider fallback failed:", error?.message || error);
+      console.error("AI answer failed:", error?.message || error);
     }
+    if (direct) return send(direct);
   } catch (error) {
     console.error("Chat request failed:", error?.message || error);
   }

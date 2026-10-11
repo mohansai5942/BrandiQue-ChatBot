@@ -46,8 +46,9 @@ FORMAT (mandatory)
 - Always answer in short bullet points, each line starting with "- ". 2 to 6 bullets.
 - Use **bold** only for names, plan names and prices.
 - No headings, no tables, no long paragraphs, no URLs in the text.
-- After the bullets, add one final line exactly like: LINKS: /pricing, /contact
-  Use 1 to 3 paths, only from this list:
+- Keep normal chat replies short (1 to 4 bullets) and conversational.
+- ONLY when the visitor asks for a link or page, asks where something is on the website, or asks for full / more details,
+  add one final line exactly like: LINKS: /pricing, /contact  (1 to 3 paths), otherwise add no LINKS line. Paths only from this list:
   / (Home), /services (All services), /web-development (Web Development), /services/ai-automation (AI Agents & Automations),
   /services/graphic-design (Graphic Design), /pricing (Pricing & plans), /solutions (Industry solutions),
   /projects (Projects), /about (About), /contact (Contact)
@@ -96,6 +97,9 @@ TERMS
 - Payment usually 50% to start, 50% before launch. Monthly plans billed at the start of each month.
 - The client owns the website, designs and workflows after final payment.
 - Extra costs (domain, hosting, plugins, API/AI usage, ad spend, taxes) are told upfront.
+
+VISITOR MEMORY
+- Known visitor details (name, business, city, phone, email) are given below when available. Use their name naturally and use their details to tailor answers. Never ask again for a detail you already have.
 
 RULES
 - Never invent facts, prices, clients or people. If unsure, offer the Contact page or WhatsApp.
@@ -409,7 +413,33 @@ function violatesFounderRule(text) {
   return false;
 }
 
+// Did the visitor ask for a page/link or for full details?
+function wantsLinks(raw) {
+  const t = String(raw || "").toLowerCase();
+  return /\b(links?|url|pages?|webpage|open|show me|take me|navigate|go to|where (can|do|is|are|on)|ekkada|ekkda|chupinchu|chupistava|ivvu|pampu|more details|full details|in detail|detailed|details|ekkuva|inka cheppu|elaborate|explain more|tell me more|learn more|read more|know more)\b/.test(t);
+}
+
+// Personal details the visitor shares; kept in their own browser and sent back with each chat.
+function extractProfile(text, base = {}) {
+  const profile = { ...base };
+  const t = String(text || "");
+  const name = t.match(/\b(?:my name is|my name's|call me|naa peru|na peru)\s+([A-Za-z][A-Za-z.'-]{1,20}(?:\s+[A-Za-z][A-Za-z.'-]{1,20})?)/i);
+  if (name && !/^(a|an|the|looking|interested|from|here|going|not|very|so|ok)$/i.test(name[1].split(/\s+/)[0])) {
+    profile.name = name[1].replace(/\s+(and|from|here|i|my|nenu|ki)$/i, "").trim().replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  const phone = t.match(/(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}\b/);
+  if (phone) profile.phone = phone[0].replace(/[\s-]/g, "");
+  const email = t.match(/[\w.+-]+@[\w-]+\.[\w.]+/);
+  if (email) profile.email = email[0];
+  const biz = t.match(/\b(?:i (?:have|run|own|started) (?:a|an|my)|my business is(?: a| an)?|naaku|maaku|naa daggara)\s+([a-z][a-z &-]{2,30}?)(?:\s+(?:undi|business|and|in|at|,|\.)|[,.!?]|$)/i);
+  if (biz && !/^(question|doubt|query|website idea)$/i.test(biz[1].trim())) profile.business = biz[1].trim();
+  const city = t.match(/\b(?:i am from|i'm from|im from|i live in|i stay in|based in|located in|maadi)\s+([a-z]{3,20})\b/i);
+  if (city && !/^(a|the|india)$/i.test(city[1])) profile.city = city[1].charAt(0).toUpperCase() + city[1].slice(1);
+  return profile;
+}
+
 module.exports = {
+  wantsLinks, extractProfile,
   PAGES, SYSTEM_PROMPT, ANSWERS, FOUNDER_ANSWER, CONTACT,
   matchIntent, inferLinks, extractLinks, toBullets, violatesFounderRule, isFounderQuestion, founderAnswer, links
 };
