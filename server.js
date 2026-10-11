@@ -7,38 +7,85 @@ const rateLimit = require("express-rate-limit");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+const IS_PRODUCTION = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+
+// Request limits for /api/chat.
+const MAX_BODY_SIZE = "256kb";
+const MAX_INCOMING_MESSAGES = 40;   // the site sends at most 16
+const MAX_HISTORY_MESSAGES = 16;
+const MAX_HISTORY_ITEM_CHARS = 2000;
+const MAX_USER_MESSAGE_CHARS = 1000;
+
+app.disable("x-powered-by");
 
 app.use(helmet({
   contentSecurityPolicy: false,
   frameguard: false
 }));
 
+// Browsers may call the API only from the BrandiQue website (and Cloudflare Pages previews of it).
+// localhost is allowed only outside production.
+const ALLOWED_ORIGINS = new Set(["https://brandique.in", "https://www.brandique.in"]);
+const PAGES_PREVIEW_ORIGIN = /^https:\/\/(?:[a-z0-9-]+\.)?brandique\.pages\.dev$/;
+const LOCAL_ORIGIN = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d{1,5})?$/;
+
+function isAllowedOrigin(origin) {
+  if (typeof origin !== "string" || !origin) return false;
+  if (ALLOWED_ORIGINS.has(origin) || PAGES_PREVIEW_ORIGIN.test(origin)) return true;
+  return !IS_PRODUCTION && LOCAL_ORIGIN.test(origin);
+}
+
 // Allow the chatbot to be embedded by the BrandiQue website.
 // CSP frame-ancestors controls which parent pages may frame this application.
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
     "frame-ancestors 'self' https://www.brandique.in https://brandique.in https://aistudio.google.com https://*.aistudio.google.com"
   );
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (_req.method === "OPTIONS") return res.sendStatus(204);
+  res.vary("Origin");
+
+  const origin = req.headers.origin;
+  const allowed = isAllowedOrigin(origin);
+  if (allowed) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Max-Age", "600");
+  }
+
+  if (req.method === "OPTIONS") return res.sendStatus(origin && !allowed ? 403 : 204);
+  if (req.path.startsWith("/api/")) res.setHeader("Cache-Control", "no-store");
   next();
 });
-app.use(express.json({ limit: "1mb" }));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.json({ limit: MAX_BODY_SIZE, strict: true }));
+app.use(express.static(path.join(__dirname, "public"), { dotfiles: "ignore", index: "index.html" }));
 
-const apiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  limit: 30,
+// Best-effort per-IP limits. On serverless each warm instance keeps its own counters,
+// so these slow down abuse but are not a global guarantee.
+function clientIp(req) {
+  const forwarded = process.env.VERCEL
+    ? req.headers["x-real-ip"] || String(req.headers["x-forwarded-for"] || "").split(",")[0]
+    : "";
+  return String(forwarded || req.ip || req.socket?.remoteAddress || "unknown").trim();
+}
+
+const limiterDefaults = {
   standardHeaders: "draft-8",
   legacyHeaders: false,
+  keyGenerator: (req) => rateLimit.ipKeyGenerator(clientIp(req)),
+  validate: { xForwardedForHeader: false },
   message: { error: "Too many requests. Please try again in a minute." }
+};
+const apiLimiter = rateLimit({ ...limiterDefaults, windowMs: 60 * 1000, limit: 30 });
+const apiHourlyLimiter = rateLimit({
+  ...limiterDefaults,
+  windowMs: 60 * 60 * 1000,
+  limit: 300,
+  message: { error: "Too many requests. Please try again later." }
 });
 
 const {
-  SYSTEM_PROMPT, ANSWERS, matchIntent, inferLinks, extractLinks, toBullets,
+  SYSTEM_PROMPT, ANSWERS, PAGES, matchIntent, inferLinks, extractLinks, toBullets,
   violatesFounderRule, founderAnswer, isFounderQuestion, wantsLinks, extractProfile
 } = require("./knowledge");
 
@@ -81,6 +128,21 @@ function findBuiltInBusinessAnswer(userText, messages = [], profile = {}) {
   return contextualAnswer(userText, messages, profile) || matchIntent(userText);
 }
 
+// Replies are rendered as plain text with **bold** and "- " bullets; never pass HTML through.
+function stripHtml(value) {
+  let text = String(value || "");
+  for (let i = 0; i < 5; i++) {
+    const next = text
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<\s*(script|style|iframe|object|embed|svg|math)\b[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
+      .replace(/<\s*\/?\s*[a-z][a-z0-9-]*(?:\s[^<>]*)?\/?\s*>/gi, "");
+    if (next === text) break;
+    text = next;
+  }
+  // Anything still tag-like after repeated passes is neutralised.
+  return /<\s*\/?\s*[a-z!]/i.test(text) ? text.replace(/</g, "‹").replace(/>/g, "›") : text;
+}
+
 function cleanProviderOutput(content) {
   if (typeof content !== "string") return null;
   let text = content.trim();
@@ -88,6 +150,7 @@ function cleanProviderOutput(content) {
   const forbidden = /user\s*safety|response\s*safety|content\s*policy|policy\s*violation|safety\s*filter|moderation|api\s*key|system\s*prompt|internal\s*error|tool\s*error/i;
   if (forbidden.test(text)) return null;
   text = text.replace(/^\s*(assistant|response)\s*:\s*/i, "");
+  text = stripHtml(text);
   const parsed = extractLinks(text);
   if (!parsed.text) return null;
   return {
@@ -156,13 +219,18 @@ const providerCooldownUntil = {
   gemini: 0
 };
 
+// Error logs stay short and never include visitor messages.
+function shortError(value) {
+  return String(value || "").replace(/\s+/g, " ").slice(0, 300);
+}
+
 function isProviderAvailable(provider) {
   return Date.now() >= Number(providerCooldownUntil[provider] || 0);
 }
 
 function markProviderCooldown(provider, reason = "") {
   providerCooldownUntil[provider] = Date.now() + PROVIDER_COOLDOWN_MS;
-  console.error(provider + " temporarily disabled:", reason || "provider failure");
+  console.error(provider + " temporarily disabled:", shortError(reason || "provider failure"));
 }
 
 function providerIsConfigured(provider) {
@@ -486,13 +554,12 @@ async function callGemini(conversationMessages, knowledgeContext = "", memory = 
             if (models[index] !== result.model) controller.abort();
           });
 
-          console.log("Gemini response served by:", result.model);
           resolve(result.content);
           return;
         }
 
         errors.push(result.model + ": " + result.error);
-        console.error("gemini model " + result.model + " failed:", result.error);
+        console.error("gemini model " + result.model + " failed:", shortError(result.error));
 
         if (completed === attempts.length) {
           settled = true;
@@ -545,7 +612,7 @@ async function callProviderWithFallback(conversationMessages, knowledgeContext =
         console.error("Gemini transient failure; another configured Gemini model was attempted.");
       }
 
-      console.error(provider + " request failed:", message);
+      console.error(provider + " request failed:", shortError(message));
     }
   }
 
@@ -553,48 +620,79 @@ async function callProviderWithFallback(conversationMessages, knowledgeContext =
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({
-    ok: true,
-    service: "brandique-chatbot",
-    providers: PROVIDER_ORDER,
-    openrouterConfigured: Boolean(process.env.OPENROUTER_API_KEY),
-    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
-    geminiModel: GEMINI_MODEL,
-    geminiFallbackModels: GEMINI_FALLBACK_MODELS,
-    failoverDelayMs: PROVIDER_FAILOVER_DELAY_MS,
-    memory: "conversation"
-  });
+  res.json({ ok: true });
 });
+
+// Visitor details are short plain values; control characters, angle brackets and newlines
+// are removed so they cannot add instructions or markup.
+function cleanProfileValue(value) {
+  return String(value)
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
 
 function sanitizeProfile(raw) {
   const out = {};
-  if (!raw || typeof raw !== "object") return out;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
   for (const key of ["name", "business", "city", "phone", "email"]) {
-    if (typeof raw[key] === "string" && raw[key].trim()) out[key] = raw[key].trim().slice(0, 80);
+    if (typeof raw[key] !== "string") continue;
+    const value = cleanProfileValue(raw[key]);
+    if (value) out[key] = value;
   }
   return out;
 }
 
-app.post("/api/chat", apiLimiter, async (req, res) => {
-  const incoming = Array.isArray(req.body?.messages) ? req.body.messages : [];
+const VALID_LINK_PATHS = new Set(Object.values(PAGES).map((page) => page.path));
 
-  const messages = incoming
+// Links are only BrandiQue site paths (rendered by the widget as https://brandique.in + path).
+function safeLinks(links) {
+  if (!Array.isArray(links)) return [];
+  return links
+    .filter((link) => link && typeof link.path === "string" && VALID_LINK_PATHS.has(link.path))
+    .map((link) => ({ path: link.path, label: stripHtml(link.label || link.path).slice(0, 60) }))
+    .slice(0, 3);
+}
+
+app.post("/api/chat", apiHourlyLimiter, apiLimiter, async (req, res) => {
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body) || !Array.isArray(body.messages)) {
+    return res.status(400).json({ error: "Invalid request." });
+  }
+  if (body.messages.length > MAX_INCOMING_MESSAGES) {
+    return res.status(400).json({ error: "Invalid request." });
+  }
+  if (body.profile !== undefined && body.profile !== null && (typeof body.profile !== "object" || Array.isArray(body.profile))) {
+    return res.status(400).json({ error: "Invalid request." });
+  }
+
+  // Only visitor and assistant turns are accepted; client-supplied system or other roles are ignored.
+  const validMessages = body.messages
     .filter((message) =>
       message &&
+      typeof message === "object" &&
       (message.role === "user" || message.role === "assistant") &&
       typeof message.content === "string"
     )
-    .slice(-16)
-    .map((message) => ({ role: message.role, content: message.content.slice(0, 2000) }));
+    .slice(-MAX_HISTORY_MESSAGES);
+
+  const latestRaw = [...validMessages].reverse().find((message) => message.role === "user");
+  if (latestRaw && latestRaw.content.trim().length > MAX_USER_MESSAGE_CHARS) {
+    return res.status(413).json({ error: "Your message is too long. Please keep it under " + MAX_USER_MESSAGE_CHARS + " characters." });
+  }
+
+  const messages = validMessages
+    .map((message) => ({ role: message.role, content: message.content.slice(0, MAX_HISTORY_ITEM_CHARS) }));
 
   const latestUserMessage = [...messages].reverse().find((message) => message.role === "user");
   const userText = latestUserMessage?.content || "";
-  const profile = extractProfile(userText, sanitizeProfile(req.body?.profile));
+  const profile = sanitizeProfile(extractProfile(userText, sanitizeProfile(body.profile)));
   const showLinks = wantsLinks(userText);
 
   const send = (answer) => res.json({
-    message: answer.message,
-    links: showLinks ? (answer.links || []) : [],
+    message: stripHtml(answer.message),
+    links: showLinks ? safeLinks(answer.links) : [],
     profile
   });
 
@@ -618,7 +716,7 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
       const answer = await callProviderWithFallback(messages, "", memory);
       if (answer) return send(answer);
     } catch (error) {
-      console.error("AI answer failed:", error?.message || error);
+      console.error("AI answer failed:", shortError(error?.message || error));
     }
     if (direct) return send(direct);
   } catch (error) {
@@ -628,17 +726,43 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
   return send(safeFallback(userText, messages));
 });
 
-app.use((_req, res) => {
+app.all("/api/chat", (_req, res) => {
+  res.setHeader("Allow", "POST, OPTIONS");
+  res.status(405).json({ error: "Method not allowed." });
+});
+
+app.all("/api/health", (_req, res) => {
+  res.setHeader("Allow", "GET, HEAD, OPTIONS");
+  res.status(405).json({ error: "Method not allowed." });
+});
+
+// Unknown API routes, file-like paths (server.js, package.json, .env, .git/...) and non-GET requests are 404.
+// Other page paths fall back to the chat page.
+app.use((req, res) => {
+  const requestPath = req.path || "/";
+  if (requestPath === "/api" || requestPath.startsWith("/api/")) {
+    return res.status(404).json({ error: "Not found." });
+  }
+  if ((req.method !== "GET" && req.method !== "HEAD") || /(^|\/)\.|\.[^/]*$/.test(requestPath)) {
+    return res.status(404).type("text/plain").send("Not found");
+  }
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Generic errors only: no stack traces, provider details or request content.
+app.use((error, _req, res, _next) => {
+  const status = Number(error?.status || error?.statusCode) || 500;
+  const code = status >= 400 && status < 600 ? status : 500;
+  if (code >= 500) console.error("Unhandled server error:", error?.name || "Error");
+  if (res.headersSent) return;
+  res.status(code).json({
+    error: code === 413 ? "Request too large." : code < 500 ? "Invalid request." : "Something went wrong. Please try again."
+  });
 });
 
 if (!process.env.VERCEL) {
 app.listen(PORT, () => {
   console.log("BrandiQue ChatBot running on port " + PORT);
-  console.log("Provider order:", PROVIDER_ORDER.join(" -> "));
-  console.log("OpenRouter model:", process.env.OPENROUTER_MODEL || "openrouter/free");
-  console.log("Gemini models:", [GEMINI_MODEL, ...GEMINI_FALLBACK_MODELS].join(" -> "));
-  console.log("Google Sheets knowledge:", process.env.GOOGLE_SHEETS_API_URL ? "enabled on demand" : "not configured");
 });
 }
 

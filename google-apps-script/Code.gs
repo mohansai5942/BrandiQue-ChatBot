@@ -14,7 +14,7 @@ function doGet(e) {
   } catch (error) {
     return sendJSON({
       success: false,
-      error: String(error?.message || error),
+      error: "Lookup failed",
       results: []
     });
   }
