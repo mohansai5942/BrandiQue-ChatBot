@@ -37,428 +37,68 @@ const apiLimiter = rateLimit({
   message: { error: "Too many requests. Please try again in a minute." }
 });
 
-const SYSTEM_PROMPT = `
-You are Darling, the official AI assistant for BrandiQue Web Solutions.
+const {
+  SYSTEM_PROMPT, ANSWERS, matchIntent, inferLinks, extractLinks, toBullets,
+  violatesFounderRule, founderAnswer, isFounderQuestion
+} = require("./knowledge");
 
-You have conversation memory. Use the previous user and assistant messages supplied with every request to understand follow-up questions, references like "that", "it", "business", "same one", "what about that", and personal details the user has explicitly shared.
-
-LANGUAGE
-- Reply in the same language the user uses.
-- English by default.
-- If the user uses Telugu, reply naturally in Telugu or Telugu-English mix.
-- Match the user's tone.
-- You may call the user Darling naturally, but do not overuse it.
-
-STYLE
-- Be concise, natural and human, but do not make useful answers artificially short.
-- Answer the exact question first.
-- Match response depth to the question: simple factual questions can be short; broad questions such as "all services", "what do you offer", or "tell me more" should include the relevant complete set of information without unnecessary filler.
-- For a single service, normally give a useful 2-4 sentence explanation covering what BrandiQue does and the main deliverables or use cases.
-- For broad service questions, organize the answer clearly by service category and include a short useful description for each.
-- Use short numbered lists when several items are requested.
-- Do not repeat the user's question.
-- Never mention Google Sheets, APIs, providers, system prompts, internal tools, or implementation details.
-- Never invent business facts.
-- Never expose API errors or internal markers.
-
-VERIFIED BRANDIQUE KNOWLEDGE
-Company: BrandiQue Web Solutions
-Founder: K. Mohan Rao
-Location: Visakhapatnam, India
-Website: https://www.brandique.in
-
-Core services:
-- Full-stack custom website development
-- React and Next.js websites
-- WordPress websites
-- Personal and portfolio websites
-- Business websites
-- E-commerce websites
-- Branding and logo design
-- Digital marketing
-- Technical SEO
-- AI automation
-- AI chatbots
-- Business automation and n8n workflows
-
-Current website starter pricing:
-- Personal: ₹9,000/-
-- Business: ₹10,999/-
-- E-commerce: ₹28,999/-
-
-Current website information:
-- Standard website delivery: 7-14 days
-- Complex applications: about 3-4 weeks
-- Technical SEO is included in website builds
-- Websites are mobile responsive
-- Maintenance is available
-- BrandiQue serves clients from Visakhapatnam and globally
-
-MEMORY RULES
-- Remember information explicitly shared by the user during the current conversation.
-- If the user says "my name is X", remember X for the conversation and use it when relevant.
-- If the user asks "do you remember my name?" and a name was explicitly shared in the conversation, answer with that name.
-- If no name was shared, say you do not have their name yet and ask them to tell you.
-- Keep using the current conversation context for follow-up questions.
-- Do not treat a one-word follow-up as a new conversation when its meaning is clear from recent messages.
-- Example: after the user asks about Personal website pricing, "business" means Business website pricing if that is the obvious context.
-
-IMPORTANT
-- Treat the verified knowledge above as authoritative for these facts.
-- For exact facts not present above, use additional verified business knowledge supplied by the backend.
-- If the exact fact is unavailable, do not guess.
-- Never claim a price is final unless the user asks about the published starter price.
-- For project-specific quotations, ask for the information needed for a quote.
-
-GREETING
-For hi, hello or hey:
-Hey 🙂 What are you looking for?
-
-FOUNDER
-If asked who founded BrandiQue, who the founder is, owner, CEO or similar:
-BrandiQue Web Solutions was founded by K. Mohan Rao.
-
-SERVICES
-If asked about services, give the relevant services directly. Do not dump the full list unless asked.
-
-PRICING
-If asked for pricing, give the published starter prices above and clarify that project-specific pricing can vary based on requirements.
-
-QUOTE
-If the user clearly wants a quote, ask for:
-- Name
-- Phone number
-- Email
-- Service needed
-- Website type if applicable
-- Short project description
-
-OUT OF SCOPE
-For unrelated questions:
-I’m focused on BrandiQue 🙂 I can help with websites, branding, marketing, or AI solutions.
-`;
-
-const BUSINESS_FACT_PATTERNS = [
-  /\b(founder|founder name|founded|who owns|owner|ceo|director)\b/i,
-  /\b(about|company|brandique|contact|phone|mobile|email|address|location|office)\b/i,
-  /\b(website url|domain|price|pricing|cost|package|packages|service price|quotation|quote)\b/i,
-  /\b(portfolio|instagram|telegram|linkedin|social media|delivery time|maintenance)\b/i,
-  /\b(marketing|digital marketing|seo|search engine optimization|social media marketing|advertising|ai automation|ai chatbot|branding|logo design|brand identity)\b/i
-];
+const BUSINESS_FACT_PATTERNS = [/\b(price|pricing|cost|package|service|quote)\b/i];
+const USE_SHEETS = /^(1|true|yes)$/i.test(String(process.env.USE_SHEETS_KNOWLEDGE || ""));
 
 function isBusinessFactQuestion(text) {
-  return BUSINESS_FACT_PATTERNS.some((pattern) => pattern.test(String(text || "")));
+  return USE_SHEETS && BUSINESS_FACT_PATTERNS.some((pattern) => pattern.test(String(text || "")));
 }
 
 function extractConversationMemory(messages) {
-  const memory = {
-    name: "",
-    lastWebsiteType: "",
-    lastTopic: "",
-    lastAssistantAnswer: ""
-  };
-
-  const all = Array.isArray(messages) ? messages : [];
-
-  for (const message of all) {
-    const text = String(message?.content || "").trim();
-    const lower = text.toLowerCase();
-
-    if (message?.role === "user") {
-      const nameMatch =
-        lower.match(/\bmy name is\s+([a-z][a-z .'-]{1,50})$/i) ||
-        lower.match(/\bcall me\s+([a-z][a-z .'-]{1,50})$/i) ||
-        lower.match(/\bi am\s+([a-z][a-z .'-]{1,50})$/i);
-
-      if (nameMatch) {
-        memory.name = nameMatch[1].trim().replace(/[.!?,]+$/, "");
-      }
-
-      if (/\bpersonal\b/.test(lower) && /\bwebsite|site\b/.test(lower)) {
-        memory.lastWebsiteType = "Personal";
-      } else if (/\bbusiness\b/.test(lower) && /\bwebsite|site\b/.test(lower)) {
-        memory.lastWebsiteType = "Business";
-      } else if (/\b(e[- ]?commerce|online store)\b/.test(lower)) {
-        memory.lastWebsiteType = "E-commerce";
-      } else if (/\bportfolio\b/.test(lower)) {
-        memory.lastWebsiteType = "Portfolio";
-      }
-
-      if (/\b(personal|business|e[- ]?commerce|portfolio)\b/.test(lower)) {
-        memory.lastTopic = "website";
-      } else if (/\b(pric|cost|quote|quotation)\b/.test(lower)) {
-        memory.lastTopic = "pricing";
-      }
-    }
-
-    if (message?.role === "assistant" && text) {
-      memory.lastAssistantAnswer = text;
-    }
+  const memory = { name: "", lastTopic: "" };
+  for (const message of Array.isArray(messages) ? messages : []) {
+    if (message?.role !== "user") continue;
+    const text = String(message.content || "").trim();
+    const m = text.match(/\b(?:my name is|call me|naa peru|na peru)\s+([a-z][a-z .'-]{1,40})/i);
+    if (m) memory.name = m[1].trim().replace(/[.!?,]+$/, "");
+    const intent = matchIntent(text);
+    if (intent && intent.links && intent.links[0]) memory.lastTopic = intent.links[0].label;
   }
-
   return memory;
 }
 
-function contextualBusinessAnswer(userText, messages) {
+function contextualAnswer(userText, messages) {
   const text = String(userText || "").trim();
-  const lower = text.toLowerCase();
-  const memory = extractConversationMemory(messages);
-
-  const nameMatch =
-    lower.match(/^my name is\s+([a-z][a-z .'-]{1,50})[.!?,]*$/i) ||
-    lower.match(/^call me\s+([a-z][a-z .'-]{1,50})[.!?,]*$/i) ||
-    lower.match(/^i am\s+([a-z][a-z .'-]{1,50})[.!?,]*$/i) ||
-    lower.match(/^i'm\s+([a-z][a-z .'-]{1,50})[.!?,]*$/i);
-
+  const nameMatch = text.match(/^(?:my name is|call me|i am|i'm|naa peru|na peru)\s+([a-z][a-z .'-]{1,40})[.!?,]*$/i);
   if (nameMatch) {
-    const name = nameMatch[1].trim().replace(/[.!?,]+$/, "");
-    return "Nice to meet you, " + name + " 🙂 I’ll remember your name during this conversation.";
+    const name = nameMatch[1].trim();
+    return { message: "- Nice to meet you, **" + name + "** 🙂\n- How can I help: a website, AI automation or design?", links: [] };
   }
-
-  if (/\b(do you remember my name|remember my name|what is my name|what's my name)\b/i.test(lower)) {
+  if (/\b(remember my name|what is my name|what's my name|naa peru enti|na peru enti)\b/i.test(text)) {
+    const memory = extractConversationMemory(messages.slice(0, -1));
     return memory.name
-      ? "Yes 🙂 Your name is " + memory.name + "."
-      : "I don’t have your name yet 🙂 Tell me your name and I’ll remember it during this conversation.";
+      ? { message: "- Yes 🙂 your name is **" + memory.name + "**.", links: [] }
+      : { message: "- I don't have your name yet 🙂 Tell me and I'll remember it in this chat.", links: [] };
   }
-
-  const oneWordWebsiteType =
-    /^(business|business website|business site)$/i.test(text)
-      ? "Business"
-      : /^(personal|personal website|personal site)$/i.test(text)
-        ? "Personal"
-        : /^(e[- ]?commerce|ecommerce|online store)$/i.test(text)
-          ? "E-commerce"
-          : /^(portfolio|portfolio website|portfolio site)$/i.test(text)
-            ? "Portfolio"
-            : "";
-
-  if (oneWordWebsiteType && (memory.lastTopic === "website" || memory.lastWebsiteType || memory.lastTopic === "pricing")) {
-    if (oneWordWebsiteType === "Business") {
-      return "The published starter price for a Business website is ₹10,999/-.";
-    }
-    if (oneWordWebsiteType === "Personal") {
-      return "The published starter price for a Personal website is ₹9,000/-.";
-    }
-    if (oneWordWebsiteType === "E-commerce") {
-      return "The published starter price for an E-commerce website is ₹28,999/-.";
-    }
-    return "A Portfolio website is available. Tell me if you want its pricing or details.";
-  }
-
-  if (/^(how much|price|pricing|cost)$/i.test(text) && memory.lastWebsiteType) {
-    if (memory.lastWebsiteType === "Business") return "The published starter price for a Business website is ₹10,999/-.";
-    if (memory.lastWebsiteType === "Personal") return "The published starter price for a Personal website is ₹9,000/-.";
-    if (memory.lastWebsiteType === "E-commerce") return "The published starter price for an E-commerce website is ₹28,999/-.";
-  }
-
-  return "";
-}
-
-function getAllServicesAnswer(includePricing = false) {
-  const pricing = includePricing
-    ? "\n\nPublished starter website pricing:\nPersonal — ₹9,000/-\nBusiness — ₹10,999/-\nE-commerce — ₹28,999/-"
-    : "";
-
-  return "BrandiQue offers a complete set of digital services for businesses, creators and professionals.\n\n" +
-    "1. Website Development — Custom full-stack websites, React/Next.js websites, WordPress sites, business websites, personal/portfolio websites and e-commerce stores.\n" +
-    "2. Branding & Logo Design — Logo design, brand identity and visual branding for businesses and creators.\n" +
-    "3. Digital Marketing — SEO, social media marketing, advertising and digital growth support.\n" +
-    "4. Technical SEO — Website structure, crawlability and search-visibility improvements, with technical SEO included in BrandiQue website builds.\n" +
-    "5. AI Automation — Business workflow automation, repetitive-task automation, AI-assisted workflows, lead flows, notifications and custom integrations.\n" +
-    "6. AI Chatbots — AI-powered customer-support and business chatbots tailored to a website or business workflow.\n" +
-    "7. n8n Business Automation — Connecting business tools and processes through n8n workflows to reduce manual work and automate operations." +
-    pricing;
-}
-
-function getServiceDetailAnswer(text) {
-  if (/\b(n8n|n8n workflow|n8n automation)\b/i.test(text)) {
-    return "BrandiQue provides n8n-based business automation and workflow solutions. We can connect business processes, automate repetitive tasks, create AI-assisted workflows, notifications and lead flows, and build custom integrations around the way your business operates.";
-  }
-
-  if (/\b(ai automation|business automation|automation)\b/i.test(text)) {
-    return "BrandiQue builds business automations that reduce repetitive manual work and connect different parts of a workflow. This can include AI-assisted tasks, lead handling, notifications, data flows and custom business processes, depending on the requirement.";
-  }
-
-  if (/\b(ai chatbot|chatbot|ai chat bot)\b/i.test(text)) {
-    return "BrandiQue builds AI chatbots for websites and business workflows. They can be designed for customer support, service information, lead collection, FAQs and other business-specific conversations, with the behavior tailored to the project.";
-  }
-
-  if (/\b(branding|logo design|brand identity)\b/i.test(text)) {
-    return "BrandiQue provides logo design and complete brand identity solutions. This can cover the visual identity of a business or creator, including logo direction and consistent branding elements used across digital platforms.";
-  }
-
-  if (/\b(digital marketing|marketing services|social media marketing|social media)\b/i.test(text)) {
-    return "BrandiQue provides digital marketing support across SEO, social media marketing, advertising and digital growth. The work can be shaped around the business, target audience and specific growth goal rather than using the same approach for every client.";
-  }
-
-  if (/\b(technical seo|seo|search engine optimization)\b/i.test(text)) {
-    return "BrandiQue provides Technical SEO focused on improving a website's structure, crawlability and search visibility. Technical SEO is also included in BrandiQue website builds, while broader SEO requirements can be handled based on the project.";
-  }
-
-  if (/\b(e[- ]?commerce|online store|shop website)\b/i.test(text)) {
-    return "BrandiQue builds e-commerce websites for businesses that need to present and sell products online. The build can be tailored around the required store structure, product presentation and business workflow.";
-  }
-
-  if (/\b(wordpress)\b/i.test(text)) {
-    return "BrandiQue develops WordPress websites for businesses, creators and professionals. The focus is on a responsive, professional site structure that can be tailored to the client's content, branding and business requirements.";
-  }
-
-  if (/\b(react|next\.js|nextjs|full[- ]stack|web development|website development|websites?)\b/i.test(text)) {
-    return "BrandiQue develops custom websites ranging from personal and portfolio sites to business and e-commerce platforms. React, Next.js, WordPress and full-stack approaches can be used depending on the project's requirements, with responsive design and technical SEO included in website builds.";
-  }
-
-  return "";
+  return null;
 }
 
 function findBuiltInBusinessAnswer(userText, messages = []) {
-  const contextual = contextualBusinessAnswer(userText, messages);
-  if (contextual) return contextual;
-
-  const text = String(userText || "").toLowerCase().trim();
-
-  const asksForAllServices =
-    /\b(all services|every service|complete services|full list of services|what services do you offer|what services does brandique offer|tell me about (your|the) services|tell me more about (your|the) services|services (you|brandique) offer|what do you offer)\b/i.test(text) ||
-    (/\bservices\b/i.test(text) && /\b(tell me|more|offer|provide|available|list|all)\b/i.test(text));
-
-  if (asksForAllServices) {
-    return getAllServicesAnswer(/\b(pric|cost|package|how much)\b/i.test(text));
-  }
-
-  const serviceDetail = getServiceDetailAnswer(text);
-  if (serviceDetail) return serviceDetail;
-
-  if (/\b(founder|founder name|founded|who founded|owner|ceo|director)\b/.test(text)) {
-    return "BrandiQue Web Solutions was founded by K. Mohan Rao.";
-  }
-
-  if (/\b(who are you|what is brandique|about brandique|about the company)\b/.test(text)) {
-    return "BrandiQue Web Solutions is a digital studio focused on websites, branding, digital marketing, AI automation and AI chatbots.";
-  }
-
-  if (/\b(website url|website link|domain|official website)\b/.test(text)) {
-    return "BrandiQue's official website is https://www.brandique.in.";
-  }
-
-  if (/\b(personal website|personal site)\b/.test(text) && /\b(price|pricing|cost|how much)\b/.test(text)) {
-    return "The published starter price for a Personal website is ₹9,000/-.";
-  }
-
-  if (/\b(business website|business site)\b/.test(text) && /\b(price|pricing|cost|how much)\b/.test(text)) {
-    return "The published starter price for a Business website is ₹10,999/-.";
-  }
-
-  if (/\b(e[- ]?commerce|online store)\b/.test(text) && /\b(price|pricing|cost|how much)\b/.test(text)) {
-    return "The published starter price for an E-commerce website is ₹28,999/-.";
-  }
-
-  if (/\b(price|pricing|cost|packages?)\b/.test(text) && !/\b(project|custom|quote|quotation)\b/.test(text)) {
-    return "Published starter prices are: Personal ₹9,000/-, Business ₹10,999/-, and E-commerce ₹28,999/-.";
-  }
-
-  if (/\b(delivery|delivery time|how long)\b/.test(text)) {
-    return "Standard website builds take 7-14 days. Complex applications usually take about 3-4 weeks.";
-  }
-
-  if (/\b(maintenance|maintain)\b/.test(text)) {
-    return "Yes. BrandiQue offers ongoing website maintenance and technical support.";
-  }
-
-  if (/\b(technical seo|seo included|seo include)\b/.test(text)) {
-    return "Yes. Technical SEO is included in BrandiQue website builds.";
-  }
-
-  if (/\b(location|office|address)\b/.test(text)) {
-    return "BrandiQue Web Solutions is based in Visakhapatnam, India and serves clients globally.";
-  }
-
-  if (/\b(tell me more about marketing|digital marketing|marketing services|what marketing services|marketing)\b/.test(text)) {
-    return "BrandiQue offers digital marketing focused on SEO, social media marketing, advertising and digital growth. If you tell me your business type and goal, I can explain the relevant marketing approach.";
-  }
-
-  if (/^\s*(seo|tell me about seo|what is seo|seo service|i want seo|i need seo)\s*[.!?]*$/i.test(text) ||
-      /\b(technical seo|search engine optimization|seo service)\b/.test(text)) {
-    return "BrandiQue provides Technical SEO to improve a website’s search visibility, structure and crawlability. Technical SEO is included in BrandiQue website builds.";
-  }
-
-  if (/\b(social media marketing|social media)\b/.test(text)) {
-    return "BrandiQue can help with social media marketing, content strategy, audience growth and campaign support.";
-  }
-
-  if (/\b(advertising|ads|paid ads|google ads|meta ads)\b/.test(text)) {
-    return "BrandiQue can help with digital advertising and campaign strategy. The exact approach depends on your business, audience and goal.";
-  }
-
-  if (/\b(n8n|n8n workflow|n8n automation)\b/.test(text)) {
-    return "BrandiQue provides n8n-based business automation and workflow solutions, including connecting business processes, automating repetitive tasks, AI-assisted workflows, notifications, lead flows and custom integrations.";
-  }
-
-  if (/\b(ai automation|automation|ai chatbot|chatbot)\b/.test(text)) {
-    return "BrandiQue builds AI chatbots and business automations, including workflow automation and n8n-based solutions.";
-  }
-
-  if (/\b(branding|logo design|brand identity)\b/.test(text)) {
-    return "BrandiQue offers logo design and complete brand identity solutions for businesses and creators.";
-  }
-
-  return "";
+  return contextualAnswer(userText, messages) || matchIntent(userText);
 }
 
 function cleanProviderOutput(content) {
-  if (typeof content !== "string") return "";
-
+  if (typeof content !== "string") return null;
   let text = content.trim();
-
-  if (!text || /^__NEED_SHEET__$/i.test(text)) return "";
-
+  if (!text || /^__NEED_SHEET__$/i.test(text)) return null;
   const forbidden = /user\s*safety|response\s*safety|content\s*policy|policy\s*violation|safety\s*filter|moderation|api\s*key|system\s*prompt|internal\s*error|tool\s*error/i;
-
-  if (forbidden.test(text)) return "";
-
+  if (forbidden.test(text)) return null;
   text = text.replace(/^\s*(assistant|response)\s*:\s*/i, "");
-
-  // Normalize common AI list formatting before it reaches the frontend.
-  // This prevents numbered service lists from becoming one long paragraph.
-  text = text
-    .replace(/\r\n?/g, "\n")
-    .replace(/\u00a0/g, " ")
-    .replace(/\s+(?=\d+\.\s+[A-Z₹])/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-  return text;
+  const parsed = extractLinks(text);
+  if (!parsed.text) return null;
+  return {
+    message: toBullets(parsed.text),
+    links: parsed.links.length ? parsed.links : inferLinks(parsed.text)
+  };
 }
 
 function safeFallback(userText, messages = []) {
-  const text = String(userText || "").toLowerCase().trim();
-
-  const builtIn = findBuiltInBusinessAnswer(text, messages);
-  if (builtIn) return builtIn;
-
-  if (/^\s*(hi|hello|hey)[!.\s]*$/i.test(text)) {
-    return "Hey 🙂 What are you looking for?";
-  }
-
-  if (/\b(quote|quotation|custom quote)\b/.test(text)) {
-    return "Sure 🙂 Share your name, phone number, email, service, and a short description of your project.";
-  }
-
-  if (/\b(website|web site|web development)\b/.test(text)) {
-    return "We offer personal, portfolio, business, and e-commerce websites 🙂 Which type do you need?";
-  }
-
-  if (/\b(branding|logo|brand identity)\b/.test(text)) {
-    return "We can help with logo design and complete brand identity 🙂 What are you looking to build?";
-  }
-
-  if (/\b(marketing|seo|digital marketing)\b/.test(text)) {
-    return "We can help with SEO, social media marketing, advertising, and digital growth 🙂 What are you looking to improve?";
-  }
-
-  if (/\b(chatbot|automation|ai)\b/.test(text)) {
-    return "We can build AI chatbots and business automations 🙂 What would you like to automate?";
-  }
-
-  return "I can help with BrandiQue websites, branding, marketing, or AI solutions 🙂 What do you need?";
+  return findBuiltInBusinessAnswer(userText, messages) || ANSWERS.fallback;
 }
 
 async function fetchJson(url, options = {}, timeoutMs = 15000, externalSignal = null) {
@@ -545,7 +185,8 @@ function flattenSheetResults(results) {
       sheet: String(item?.sheet || ""),
       data: item?.data && typeof item.data === "object" ? item.data : {}
     }))
-    .filter((item) => Object.keys(item.data).length > 0);
+    .filter((item) => Object.keys(item.data).length > 0)
+    .filter((item) => !/praveen|karri|co[- ]?founder/i.test(JSON.stringify(item.data)));
 }
 
 async function fetchSheetData(query = "") {
@@ -659,7 +300,6 @@ async function callOpenRouter(conversationMessages, knowledgeContext = "", memor
   const model = process.env.OPENROUTER_MODEL || "openrouter/free";
   const memoryContext = [
     memory.name ? "User name: " + memory.name : "",
-    memory.lastWebsiteType ? "Current website type in conversation: " + memory.lastWebsiteType : "",
     memory.lastTopic ? "Current topic: " + memory.lastTopic : ""
   ].filter(Boolean).join("\n");
 
@@ -738,7 +378,6 @@ async function callGeminiModel(model, conversationMessages, knowledgeContext, me
 
   const memoryContext = [
     memory.name ? "User name: " + memory.name : "",
-    memory.lastWebsiteType ? "Current website type in conversation: " + memory.lastWebsiteType : "",
     memory.lastTopic ? "Current topic: " + memory.lastTopic : ""
   ].filter(Boolean).join("\n");
 
@@ -878,6 +517,7 @@ async function callProviderWithFallback(conversationMessages, knowledgeContext =
         : await callOpenRouter(conversationMessages, knowledgeContext, memory);
 
       const cleaned = cleanProviderOutput(content);
+      if (cleaned && violatesFounderRule(cleaned.message)) return founderAnswer("");
       if (cleaned) return cleaned;
 
       throw new Error(provider + " returned empty content");
@@ -926,33 +566,29 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
       (message.role === "user" || message.role === "assistant") &&
       typeof message.content === "string"
     )
-    .slice(-20)
-    .map((message) => ({
-      role: message.role,
-      content: message.content.slice(0, 2500)
-    }));
+    .slice(-16)
+    .map((message) => ({ role: message.role, content: message.content.slice(0, 2000) }));
 
-  if (!messages.length) return res.json({ message: safeFallback("") });
+  const send = (answer) => res.json({ message: answer.message, links: answer.links || [] });
+
+  if (!messages.length) return send(ANSWERS.greeting);
 
   const latestUserMessage = [...messages].reverse().find((message) => message.role === "user");
   const userText = latestUserMessage?.content || "";
   const memory = extractConversationMemory(messages);
 
   try {
-    const directBusinessAnswer = findBuiltInBusinessAnswer(userText, messages);
-    if (directBusinessAnswer) return res.json({ message: directBusinessAnswer });
+    if (isFounderQuestion(userText)) return send(founderAnswer(userText));
+
+    const direct = findBuiltInBusinessAnswer(userText, messages);
+    if (direct) return send(direct);
 
     if (isBusinessFactQuestion(userText)) {
       const sheetResults = await getSheetKnowledge(userText);
-
       if (sheetResults.length) {
         try {
-          const answer = await callProviderWithFallback(
-            messages,
-            buildKnowledgeContext(sheetResults),
-            memory
-          );
-          if (answer) return res.json({ message: answer });
+          const answer = await callProviderWithFallback(messages, buildKnowledgeContext(sheetResults), memory);
+          if (answer) return send(answer);
         } catch (error) {
           console.error("Sheet answer generation failed:", error?.message || error);
         }
@@ -961,7 +597,7 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
 
     try {
       const answer = await callProviderWithFallback(messages, "", memory);
-      if (answer) return res.json({ message: answer });
+      if (answer) return send(answer);
     } catch (error) {
       console.error("AI provider fallback failed:", error?.message || error);
     }
@@ -969,7 +605,7 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
     console.error("Chat request failed:", error?.message || error);
   }
 
-  return res.json({ message: safeFallback(userText, messages) });
+  return send(safeFallback(userText, messages));
 });
 
 app.use((_req, res) => {

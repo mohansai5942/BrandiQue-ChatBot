@@ -1,0 +1,407 @@
+// BrandiQue verified knowledge base.
+// Mirrors https://www.brandique.in (data/offers.ts and data/services.ts in the website repo).
+// Every built-in answer is bullet points plus page links the widget turns into buttons.
+
+const PAGES = {
+  home: { path: "/", label: "Home" },
+  services: { path: "/services", label: "All services" },
+  web: { path: "/web-development", label: "Web Development" },
+  ai: { path: "/services/ai-automation", label: "AI Agents & Automations" },
+  design: { path: "/services/graphic-design", label: "Graphic Design" },
+  pricing: { path: "/pricing", label: "Pricing & plans" },
+  solutions: { path: "/solutions", label: "Industry solutions" },
+  projects: { path: "/projects", label: "Projects" },
+  about: { path: "/about", label: "About BrandiQue" },
+  contact: { path: "/contact", label: "Contact us" },
+  privacy: { path: "/privacy-policy", label: "Privacy policy" },
+  terms: { path: "/terms-and-conditions", label: "Terms & conditions" },
+  cookies: { path: "/cookie-policy", label: "Cookie policy" }
+};
+
+const VALID_PATHS = new Set(Object.values(PAGES).map((p) => p.path));
+const links = (...keys) => keys.map((k) => PAGES[k]).filter(Boolean);
+
+const CONTACT = {
+  phone: "+91 70933 20572",
+  whatsapp: "https://wa.me/917093320572",
+  email: "brandiquewebsolutions@gmail.com",
+  location: "Visakhapatnam (Vizag), Andhra Pradesh, India",
+  hours: "Mon to Sat, 9:00 AM to 8:00 PM IST",
+  instagram: "@brandiquewebsolutions"
+};
+
+const FOUNDER_ANSWER = [
+  "- BrandiQue Web Solutions has **one founder: K. Mohan Rao** (Kutikuppala Mohan Rao).",
+  "- There are **no co-founders**. Mohan is the founder and leads the company.",
+  "- He personally guides every project across web development, AI automation and design."
+].join("\n");
+
+const SYSTEM_PROMPT = `
+You are Darling, the official AI assistant on the BrandiQue Web Solutions website (https://www.brandique.in).
+
+LANGUAGE
+- Reply in the user's language. English by default. If the user writes Telugu or Telugu-English (romanized), reply in the same mix.
+
+FORMAT (mandatory)
+- Always answer in short bullet points, each line starting with "- ". 2 to 6 bullets.
+- Use **bold** only for names, plan names and prices.
+- No headings, no tables, no long paragraphs, no URLs in the text.
+- After the bullets, add one final line exactly like: LINKS: /pricing, /contact
+  Use 1 to 3 paths, only from this list:
+  / (Home), /services (All services), /web-development (Web Development), /services/ai-automation (AI Agents & Automations),
+  /services/graphic-design (Graphic Design), /pricing (Pricing & plans), /solutions (Industry solutions),
+  /projects (Projects), /about (About), /contact (Contact)
+
+FOUNDER RULE (absolute)
+- BrandiQue Web Solutions has exactly ONE founder: K. Mohan Rao (Kutikuppala Mohan Rao). He is the founder and the person who leads the company (owner, CEO, head, everything).
+- There are NO co-founders and no other founders, partners, owners or CEO. If asked about a co-founder, partner or another leader, say clearly: BrandiQue has one founder, K. Mohan Rao, and there are no co-founders.
+- Never name, describe or discuss any other team member. If asked about any other person, say you can only share information about the founder, K. Mohan Rao, and BrandiQue's services.
+
+COMPANY
+- BrandiQue Web Solutions, a growth studio based in ${CONTACT.location}, working with clients across India and worldwide.
+- Focused on exactly three services: Web Development, AI Agents & Automations, Graphic Design.
+- Main free offer: a Free Growth Audit (review of website, enquiries and follow-up, with practical fixes).
+- Contact: WhatsApp/phone ${CONTACT.phone}, email ${CONTACT.email}, hours ${CONTACT.hours}. Instagram ${CONTACT.instagram}.
+
+1) WEB DEVELOPMENT (/web-development)
+- Fast, mobile-first websites that make it easy to call, WhatsApp or book. Business websites, e-commerce stores, portfolio and personal brand sites, landing pages, SEO and Google Business setup, lead capture to email or Google Sheets.
+- Custom-coded React / Next.js (best speed and unique design) or WordPress (easy for teams to edit).
+- Packages: Website Starter **₹9,000** (up to 3 pages); Business Website **₹15,000** (up to 5 pages, most popular); E-commerce Store from **₹25,000** (catalogue, cart, payment gateway).
+- Domain, hosting and paid plugins are billed separately. Starter and business sites launch in 1 to 2 weeks after content; stores 3 to 4 weeks.
+
+2) AI AGENTS & AUTOMATIONS (/services/ai-automation)
+- WhatsApp AI assistants, website and Telegram chatbots, lead capture and CRM/Sheets sync, reminders and follow-ups, quotations/invoices/reports generated automatically, custom n8n workflows with APIs and webhooks.
+- Packages: Lead Automation **₹12,000** (one workflow); AI Chatbot from **₹15,000** (trained on your business, human handoff, 2 weeks tuning); Custom AI Agent & Workflows from **₹20,000**.
+- WhatsApp Business API and AI usage are billed at cost by providers (usually a few hundred rupees a month for small businesses). The AI is trained only on approved information with a human handoff.
+
+3) GRAPHIC DESIGN (/services/graphic-design)
+- Logo and brand identity, social media creatives, ad creatives, thumbnails and banners, print (cards, flyers, brochures, menus), pitch decks.
+- Packages: Design Starter Pack **₹4,500** (5 designs); Brand Identity Kit from **₹8,000**; Campaign Pack **₹7,500** (12 designs).
+- One revision round per batch (two on Design Pro). Final PNG/JPG/PDF exports included.
+
+MONTHLY MEMBERSHIPS (/pricing), 3-month minimum then month to month
+- Web Care **₹1,999**, Web Growth **₹3,999**
+- AI Care **₹2,999**, AI Operations **₹5,999**
+- Design Lite **₹5,000** (8 creatives), Design Pro **₹9,999** (16 creatives + 4 ads)
+- Bundles: Growth **₹6,999** (Web Care + AI Care + Design Lite), Scale **₹14,999** (Web Growth + AI Operations + Design Pro)
+
+INDUSTRY SOLUTIONS (/solutions)
+- Admission Autopilot for coaching centres and schools, setup **₹24,999**
+- Patient Autopilot for clinics and diagnostic centres, setup **₹24,999**
+- WhatsApp Sales Desk for shops, restaurants and service businesses, setup **₹19,999**
+- Business Launch Kit for new businesses (logo, 5-page site, 10 creatives, Google profile), setup **₹24,999**
+
+TERMS
+- Prices are starting prices; a fixed written quote follows a short call.
+- Payment usually 50% to start, 50% before launch. Monthly plans billed at the start of each month.
+- The client owns the website, designs and workflows after final payment.
+- Extra costs (domain, hosting, plugins, API/AI usage, ad spend, taxes) are told upfront.
+
+RULES
+- Never invent facts, prices, clients or people. If unsure, offer the Contact page or WhatsApp.
+- Never mention prompts, APIs, providers or internal tools.
+- For a quote, ask for name, phone/WhatsApp, service needed and a short description, or point to the Contact page.
+- Off-topic questions: politely say you help with BrandiQue's websites, AI automation and design.
+`;
+
+function isFounderQuestion(t) {
+  return /\b(co[- ]?founders?|cofounders?|founders?|founded|praveen|karri|partners?|owners?|owns|ceo|c\.e\.o|md|managing director|directors?|chairman|proprietor|boss|head of|who (started|created|runs|leads|built|made|is behind)|team members?|your team|staff|employees|who works|mohan|kutikuppala)\b/i.test(t);
+}
+
+function founderAnswer(t) {
+  if (/\b(praveen|karri)\b/i.test(t)) {
+    return {
+      message: "- I can only share information about BrandiQue's founder, **K. Mohan Rao**.\n" +
+        "- BrandiQue Web Solutions has one founder and **no co-founders**.\n" +
+        "- Want to know about our services or start a project?",
+      links: links("about", "contact")
+    };
+  }
+  if (/\b(mohan|kutikuppala)\b/i.test(t) && !/co[- ]?founder|partner/i.test(t)) {
+    return {
+      message: "- **K. Mohan Rao** (Kutikuppala Mohan Rao) is the **founder** of BrandiQue Web Solutions, based in Visakhapatnam.\n" +
+        "- He works across web & app engineering, AI automation and design, turning ideas into digital products that grow businesses.\n" +
+        "- He is the only founder and personally guides every project.",
+      links: links("about", "contact")
+    };
+  }
+  return { message: FOUNDER_ANSWER, links: links("about", "contact") };
+}
+
+const ANSWERS = {
+  greeting: {
+    message: "- Hey 🙂 I'm Darling, BrandiQue's AI assistant.\n" +
+      "- I can help with **websites**, **AI agents & automations** and **graphic design**.\n" +
+      "- Ask me about services, prices, timelines or getting a free growth audit.",
+    links: links("services", "pricing")
+  },
+  about: {
+    message: "- **BrandiQue Web Solutions** is a growth studio in Visakhapatnam, founded by **K. Mohan Rao**.\n" +
+      "- We focus on three services: **Web Development**, **AI Agents & Automations** and **Graphic Design**.\n" +
+      "- Goal: help businesses get found, reply instantly and look trusted everywhere.\n" +
+      "- We work with clients across India and worldwide.",
+    links: links("about", "services")
+  },
+  services: {
+    message: "- **Web Development** from **₹9,000**: business, e-commerce and portfolio websites built to bring enquiries.\n" +
+      "- **AI Agents & Automations** from **₹12,000**: WhatsApp and website chatbots, lead capture, automatic follow-ups, n8n workflows.\n" +
+      "- **Graphic Design** from **₹4,500**: logos, brand kits, social media and ad creatives.\n" +
+      "- Monthly memberships from **₹1,999** keep everything running.",
+    links: links("web", "ai", "design")
+  },
+  web: {
+    message: "- Fast, mobile-first websites with WhatsApp, call and enquiry buttons on every page.\n" +
+      "- **Website Starter ₹9,000** (up to 3 pages), **Business Website ₹15,000** (up to 5 pages), **E-commerce Store from ₹25,000**.\n" +
+      "- Custom React / Next.js or easy-to-edit WordPress, with SEO and Google setup.\n" +
+      "- Most sites go live in 1 to 2 weeks; stores in 3 to 4 weeks.",
+    links: links("web", "pricing", "contact")
+  },
+  ecommerce: {
+    message: "- **E-commerce Store from ₹25,000** (one-time).\n" +
+      "- Product catalogue and categories, cart, checkout and payment gateway (Razorpay or others).\n" +
+      "- Order notification emails, mobile-first design and training to add your own products.\n" +
+      "- Usually live in 3 to 4 weeks after content; gateway fees and paid themes are separate.",
+    links: links("web", "pricing", "contact")
+  },
+  wordpress: {
+    message: "- **Custom code (React / Next.js)**: best speed, unique premium design and smooth animations.\n" +
+      "- **WordPress**: a familiar dashboard so your team can edit pages, blogs and products themselves.\n" +
+      "- Both come with responsive design, enquiry buttons and SEO foundations.",
+    links: links("web", "contact")
+  },
+  ai: {
+    message: "- AI assistants and n8n workflows that answer customers 24/7, capture every lead and follow up automatically.\n" +
+      "- **Lead Automation ₹12,000**, **AI Chatbot from ₹15,000**, **Custom AI Agent & Workflows from ₹20,000**.\n" +
+      "- Works on WhatsApp, Telegram and your website, with human handoff.\n" +
+      "- WhatsApp API and AI usage are billed at cost, usually a few hundred rupees a month.",
+    links: links("ai", "pricing", "contact")
+  },
+  chatbot: {
+    message: "- **AI Chatbot from ₹15,000** (one-time).\n" +
+      "- Trained on your services, prices and FAQs; runs on your website, WhatsApp or Telegram.\n" +
+      "- Captures leads and hands over to your team when needed.\n" +
+      "- Includes conversation testing and two weeks of post-launch tuning.",
+    links: links("ai", "pricing", "contact")
+  },
+  design: {
+    message: "- Logos, brand identity, social media posts, ad creatives, thumbnails, flyers and pitch decks.\n" +
+      "- **Design Starter Pack ₹4,500** (5 designs), **Campaign Pack ₹7,500** (12 designs), **Brand Identity Kit from ₹8,000**.\n" +
+      "- Monthly design: **Design Lite ₹5,000** or **Design Pro ₹9,999**.\n" +
+      "- One revision round per batch; final PNG/JPG/PDF files included.",
+    links: links("design", "pricing", "contact")
+  },
+  logo: {
+    message: "- **Brand Identity Kit from ₹8,000**.\n" +
+      "- Primary logo and one variation, colour palette and typography.\n" +
+      "- Mini brand usage guide, social profile and favicon exports.\n" +
+      "- One refinement round; editable source files are included in brand kits.",
+    links: links("design", "contact")
+  },
+  pricing: {
+    message: "- **Web Development**: Starter **₹9,000**, Business **₹15,000**, E-commerce from **₹25,000**.\n" +
+      "- **AI Agents & Automations**: Lead Automation **₹12,000**, AI Chatbot from **₹15,000**, Custom Agents from **₹20,000**.\n" +
+      "- **Graphic Design**: Starter Pack **₹4,500**, Campaign Pack **₹7,500**, Brand Kit from **₹8,000**.\n" +
+      "- Monthly plans from **₹1,999**. Prices are starting points; you get a fixed written quote.",
+    links: links("pricing", "contact")
+  },
+  memberships: {
+    message: "- **Web**: Web Care **₹1,999**, Web Growth **₹3,999** a month.\n" +
+      "- **AI**: AI Care **₹2,999**, AI Operations **₹5,999** a month.\n" +
+      "- **Design**: Design Lite **₹5,000**, Design Pro **₹9,999** a month.\n" +
+      "- **Bundles**: Growth **₹6,999** and Scale **₹14,999** a month.\n" +
+      "- 3-month minimum, then month to month.",
+    links: links("pricing", "contact")
+  },
+  bundles: {
+    message: "- **Growth ₹6,999/month**: Web Care + AI Care + Design Lite (worth ₹9,998 separately).\n" +
+      "- **Scale ₹14,999/month**: Web Growth + AI Operations + Design Pro (worth ₹19,997 separately).\n" +
+      "- Scale adds a monthly strategy call and priority same-day replies.\n" +
+      "- 3-month minimum, then month to month.",
+    links: links("pricing", "contact")
+  },
+  solutions: {
+    message: "- **Admission Autopilot** for coaching centres and schools, setup **₹24,999**.\n" +
+      "- **Patient Autopilot** for clinics and diagnostic centres, setup **₹24,999**.\n" +
+      "- **WhatsApp Sales Desk** for shops, restaurants and services, setup **₹19,999**.\n" +
+      "- **Business Launch Kit** for new businesses, setup **₹24,999**.",
+    links: links("solutions", "contact")
+  },
+  projects: {
+    message: "- Live client and personal projects: business websites, e-commerce stores and portfolios.\n" +
+      "- Product, UI and 3D design work, plus logo and brand creations.\n" +
+      "- AI automation and n8n workflow builds.",
+    links: links("projects", "contact")
+  },
+  contact: {
+    message: `- **WhatsApp / Call**: ${CONTACT.phone}\n` +
+      `- **Email**: ${CONTACT.email}\n` +
+      `- **Hours**: ${CONTACT.hours}\n` +
+      `- **Based in**: ${CONTACT.location}, serving clients everywhere.`,
+    links: links("contact")
+  },
+  location: {
+    message: `- BrandiQue Web Solutions is based in **${CONTACT.location}**.\n` +
+      "- We work with clients across India and worldwide, fully online.\n" +
+      `- Working hours: ${CONTACT.hours}.`,
+    links: links("contact", "about")
+  },
+  quote: {
+    message: "- Share your **name**, **phone / WhatsApp**, the **service** you need and a short project description.\n" +
+      "- After a short call you get a **fixed written quote**, so the price you approve is the price you pay.\n" +
+      "- Or fill the form on the Contact page and we reply quickly.",
+    links: links("contact", "pricing")
+  },
+  audit: {
+    message: "- The **Free Growth Audit** reviews your website, enquiries and follow-up.\n" +
+      "- You get practical fixes to win more customers, no obligation.\n" +
+      "- Request it from the Contact page or on WhatsApp.",
+    links: links("contact", "services")
+  },
+  timeline: {
+    message: "- Starter and business websites, and single automations: **1 to 2 weeks**.\n" +
+      "- E-commerce stores, larger websites and industry solutions: **2 to 4 weeks**.\n" +
+      "- Timelines start once we receive your content.",
+    links: links("pricing", "contact")
+  },
+  payment: {
+    message: "- Usually **50% to start** and **50% before launch**.\n" +
+      "- Monthly plans are billed at the start of each month, with a 3-month minimum.\n" +
+      "- Prices are starting points; you approve a fixed written quote first.",
+    links: links("pricing", "contact")
+  },
+  extraCosts: {
+    message: "- Not included: domain, hosting, paid plugins, WhatsApp Business API and AI usage, ad spend and taxes.\n" +
+      "- These are billed at cost or quoted separately.\n" +
+      "- We tell you about every one before you approve anything.",
+    links: links("pricing", "contact")
+  },
+  ownership: {
+    message: "- **You own it.** After final payment the website, content, designs and workflows are yours.\n" +
+      "- We hand over all access and a walkthrough.",
+    links: links("pricing")
+  },
+  maintenance: {
+    message: "- **Web Care ₹1,999/month**: edits, form and uptime checks, backups, WhatsApp support.\n" +
+      "- **Web Growth ₹3,999/month**: more edits, a new section monthly, SEO and reports.\n" +
+      "- **AI Care ₹2,999/month** keeps chatbots and automations running.",
+    links: links("pricing", "contact")
+  },
+  seo: {
+    message: "- SEO foundations are built into every website: structure, speed and Google-ready pages.\n" +
+      "- Business Website includes **Google Business Profile and SEO setup**.\n" +
+      "- **Web Growth (₹3,999/month)** adds ongoing on-page SEO and Google Business updates.",
+    links: links("web", "pricing")
+  },
+  offTopic: {
+    message: "- I'm focused on BrandiQue 🙂\n" +
+      "- I can help with **websites**, **AI agents & automations** and **graphic design**.",
+    links: links("services")
+  },
+  fallback: {
+    message: "- I can help with BrandiQue's **websites**, **AI automation** and **graphic design**.\n" +
+      "- Ask about prices, timelines or the free growth audit, or reach us on WhatsApp.",
+    links: links("services", "contact")
+  }
+};
+
+// Deterministic intent matching for verified facts (fast, never hallucinates).
+function matchIntent(raw) {
+  const t = String(raw || "").toLowerCase().trim();
+  if (!t) return null;
+
+  if (isFounderQuestion(t)) return founderAnswer(t);
+  if (/^\s*(hi+|hello+|hey+|hai|hii+|namaste|namaskaram|good (morning|afternoon|evening))[!.\s🙂]*$/i.test(t)) return ANSWERS.greeting;
+
+  const price = /\b(price|pricing|prices|cost|costs|charges?|rate|rates|how much|fee|fees|budget|rs\.?|₹|entha|enta|packages?)\b/i.test(t);
+
+  if (/\b(bundles?|growth plan|scale plan|all[- ]in[- ]one)\b/.test(t)) return ANSWERS.bundles;
+  if (/\b(memberships?|monthly|subscription|per month|retainer)\b/.test(t)) return ANSWERS.memberships;
+  if (/\b(solutions?|industr(y|ies)|coaching|schools?|clinics?|hospitals?|restaurants?|shops?|admissions?|patients?|doctors?|retail)\b/.test(t)) return ANSWERS.solutions;
+  if (/\b(audit)\b/.test(t)) return ANSWERS.audit;
+  if (/\b(chat ?bots?|chatbot)\b/.test(t)) return ANSWERS.chatbot;
+  if (/\b(ai|automation|automations|automate|n8n|workflows?|agents?|whatsapp bot|crm)\b/.test(t)) return ANSWERS.ai;
+  if (/\b(e[- ]?commerce|online store|online shop|store website)\b/.test(t)) return ANSWERS.ecommerce;
+  if (/\b(wordpress|react|next\.?js|custom code)\b/.test(t)) return ANSWERS.wordpress;
+  if (/\b(logo|brand identity|branding|brand kit)\b/.test(t)) return ANSWERS.logo;
+  if (/\b(design|designs|graphic|creatives?|posters?|flyers?|thumbnails?|banners?|social media posts?|instagram posts?)\b/.test(t)) return ANSWERS.design;
+  if (/\b(seo|google ranking|search engine|google business)\b/.test(t)) return ANSWERS.seo;
+  if (/\b(website|websites|web site|web development|landing page|portfolio website|site)\b/.test(t)) return ANSWERS.web;
+  if (/\b(all services|services|what do you (offer|do)|offerings)\b/.test(t)) return ANSWERS.services;
+  if (price) return ANSWERS.pricing;
+  if (/\b(projects?|portfolio|work samples?|previous work|clients?|case stud(y|ies))\b/.test(t)) return ANSWERS.projects;
+  if (/\b(quote|quotation|estimate|start a project|hire)\b/.test(t)) return ANSWERS.quote;
+  if (/\b(how long|timeline|delivery|turnaround|days|weeks)\b/.test(t)) return ANSWERS.timeline;
+  if (/\b(payment|pay|advance|installments?)\b/.test(t)) return ANSWERS.payment;
+  if (/\b(hosting|domain|hidden|extra cost|not included)\b/.test(t)) return ANSWERS.extraCosts;
+  if (/\b(own|ownership|source code)\b/.test(t)) return ANSWERS.ownership;
+  if (/\b(maintenance|maintain|support|updates?)\b/.test(t)) return ANSWERS.maintenance;
+  if (/\b(where|location|address|office|based|vizag|visakhapatnam)\b/.test(t)) return ANSWERS.location;
+  if (/\b(contact|phone|number|call|whatsapp|email|mail|reach|hours|timings?)\b/.test(t)) return ANSWERS.contact;
+  if (/\b(about|what is brandique|who are you|brandique|company)\b/.test(t)) return ANSWERS.about;
+  if (/\b(privacy)\b/.test(t)) return { message: "- Our privacy policy explains what data we collect and how it is used.", links: links("privacy") };
+  if (/\b(terms|conditions|refund)\b/.test(t)) return { message: "- Our terms explain project scope, payments and responsibilities.", links: links("terms", "contact") };
+  return null;
+}
+
+// Keyword-based page links for AI answers that did not give valid ones.
+function inferLinks(text) {
+  const t = String(text || "").toLowerCase();
+  const out = [];
+  const add = (k) => { if (!out.includes(PAGES[k])) out.push(PAGES[k]); };
+  if (/website|web development|e-?commerce|wordpress|landing/.test(t)) add("web");
+  if (/\bai\b|automation|chatbot|n8n|workflow|agent/.test(t)) add("ai");
+  if (/design|logo|brand|creative/.test(t)) add("design");
+  if (/price|₹|cost|plan|membership/.test(t)) add("pricing");
+  if (/founder|about|mohan/.test(t)) add("about");
+  if (/project|portfolio/.test(t)) add("projects");
+  if (/industry|clinic|coaching|restaurant/.test(t)) add("solutions");
+  add("contact");
+  return out.slice(0, 3);
+}
+
+// Pulls the "LINKS: /a, /b" line out of an AI answer.
+function extractLinks(text) {
+  const lines = String(text || "").split("\n");
+  let found = [];
+  const kept = [];
+  for (const line of lines) {
+    const m = line.match(/^\s*\**links?\**\s*:\s*(.+)$/i);
+    if (m) {
+      found = m[1].split(/[,\s]+/)
+        .map((p) => p.trim().replace(/^https?:\/\/(www\.)?brandique\.in/i, "").replace(/\/+$/, "") || "/")
+        .filter((p) => VALID_PATHS.has(p));
+    } else kept.push(line);
+  }
+  const unique = [...new Set(found)].map((p) => Object.values(PAGES).find((pg) => pg.path === p));
+  return { text: kept.join("\n").trim(), links: unique.slice(0, 3) };
+}
+
+// Turns any paragraph answer into bullet points.
+function toBullets(text) {
+  const clean = String(text || "").replace(/\r\n?/g, "\n").replace(/^#+\s*/gm, "").trim();
+  const lines = clean.split("\n").map((l) => l.trim()).filter(Boolean);
+  const bulletRe = /^([-*•]|\d+[.)])\s+/;
+  if (lines.length && lines.every((l) => bulletRe.test(l))) {
+    return lines.map((l) => "- " + l.replace(bulletRe, "")).join("\n");
+  }
+  const out = [];
+  for (const l of lines) {
+    if (bulletRe.test(l)) { out.push("- " + l.replace(bulletRe, "")); continue; }
+    const sentences = l.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [l];
+    for (const s of sentences) if (s.trim()) out.push("- " + s.trim());
+  }
+  return out.slice(0, 8).join("\n");
+}
+
+// Absolute safety net: no co-founder / other-person claims ever leave the server.
+function violatesFounderRule(text) {
+  const t = String(text || "").toLowerCase();
+  if (/praveen|karri/.test(t)) return true;
+  if (/co[- ]?founder/.test(t) && !/no co[- ]?founders?|not have (any )?co[- ]?founders?|without (any )?co[- ]?founders?|zero co[- ]?founders?/.test(t)) return true;
+  return false;
+}
+
+module.exports = {
+  PAGES, SYSTEM_PROMPT, ANSWERS, FOUNDER_ANSWER, CONTACT,
+  matchIntent, inferLinks, extractLinks, toBullets, violatesFounderRule, isFounderQuestion, founderAnswer, links
+};

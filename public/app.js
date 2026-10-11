@@ -60,6 +60,20 @@ function addMessage(role, content, options = {}) {
     row.innerHTML = `<div class="bubble">${formatMessage(content)}</div>`;
   }
 
+  if (Array.isArray(options.links) && options.links.length) {
+    const wrap = document.createElement("div");
+    wrap.className = "link-chips";
+    for (const link of options.links) {
+      if (!link || typeof link.path !== "string" || !link.path.startsWith("/")) continue;
+      const a = document.createElement("a");
+      a.href = "https://www.brandique.in" + link.path;
+      a.target = "_top";
+      a.textContent = String(link.label || link.path) + " ↗";
+      wrap.appendChild(a);
+    }
+    row.appendChild(wrap);
+  }
+
   messagesEl.appendChild(row);
   scrollBottom();
   return row;
@@ -122,7 +136,7 @@ async function sendMessage(text) {
     const response = await fetch(`${API_BASE}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history.slice(-20) })
+      body: JSON.stringify({ messages: history.slice(-16).map(({ role, content }) => ({ role, content })) })
     });
 
     const data = await response.json();
@@ -130,9 +144,9 @@ async function sendMessage(text) {
 
     if (!response.ok) throw new Error(data?.error || "Unable to get a response.");
 
-    history.push({ role: "assistant", content: data.message });
+    history.push({ role: "assistant", content: data.message, links: data.links || [] });
     saveHistory();
-    addMessage("assistant", data.message);
+    addMessage("assistant", data.message, { links: data.links || [] });
   } catch (error) {
     typing.remove();
     addMessage("assistant", error.message || "Something went wrong. Please try again.");
@@ -173,7 +187,7 @@ clearBtn.addEventListener("click", () => {
   suggestions.style.display = "flex";
   addMessage(
     "assistant",
-    "I’m Darling, BrandiQue’s AI assistant. Ask me about our services, websites, branding, SEO, AI automation or e-commerce solutions.",
+    "- I’m Darling, BrandiQue’s AI assistant.\n- Ask me about websites, AI agents & automations or graphic design.",
     { welcome: true }
   );
   input.focus();
@@ -183,7 +197,7 @@ function restoreChat() {
   if (!history.length) {
     addMessage(
       "assistant",
-      "I’m Darling, BrandiQue’s AI assistant. Ask me about our services, websites, branding, SEO, AI automation or e-commerce solutions.",
+      "- I’m Darling, BrandiQue’s AI assistant.\n- Ask me about websites, AI agents & automations or graphic design.",
       { welcome: true }
     );
     return;
@@ -192,7 +206,7 @@ function restoreChat() {
   suggestions.style.display = "none";
 
   for (const message of history) {
-    addMessage(message.role, message.content);
+    addMessage(message.role, message.content, { links: message.links });
   }
 }
 

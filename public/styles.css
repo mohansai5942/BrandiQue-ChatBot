@@ -212,3 +212,8 @@ html.embed-mode .composer-meta {
 html.embed-mode .bubble strong {
   font-weight: 700;
 }
+
+.message-row.assistant{flex-direction:column;align-items:flex-start}
+.link-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.link-chips a{font-size:12px;font-weight:600;color:#fcd34d;text-decoration:none;padding:5px 11px;border-radius:999px;border:1px solid rgba(250,204,21,.3);background:rgba(250,204,21,.07)}
+.link-chips a:hover{background:rgba(250,204,21,.16);border-color:rgba(250,204,21,.6)}
