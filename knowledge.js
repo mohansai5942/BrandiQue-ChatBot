@@ -105,7 +105,15 @@ RULES
 `;
 
 function isFounderQuestion(t) {
-  return /\b(co[- ]?founders?|cofounders?|founders?|founded|praveen|karri|partners?|owners?|owns|ceo|c\.e\.o|md|managing director|directors?|chairman|proprietor|boss|head of|who (started|created|runs|leads|built|made|is behind)|team members?|your team|staff|employees|who works|mohan|kutikuppala)\b/i.test(t);
+  const strong = /\b(co[- ]?founders?|cofounders?|founders?|founded|praveen|karri|ceo|c\.e\.o|mohan|kutikuppala|proprietor|chairman)\b/i;
+  if (strong.test(t)) return true;
+  const weak = "(owners?|partners?|directors?|md|managing director|boss|team members?|team|staff|employees|head)";
+  return new RegExp(
+    "\\b(who|evaru|evvaru)\\b.{0,25}\\b" + weak + "\\b" +
+    "|\\b" + weak + "\\b.{0,25}\\b(evaru|evvaru|of brandique|of the company|of your company|behind brandique)\\b" +
+    "|\\b(your|brandique'?s?|the company'?s?)\\s+" + weak + "\\b" +
+    "|\\bwho (started|created|runs|leads|built|made|owns|is behind)\\b", "i"
+  ).test(t);
 }
 
 function founderAnswer(t) {

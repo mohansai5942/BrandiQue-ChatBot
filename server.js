@@ -581,7 +581,20 @@ app.post("/api/chat", apiLimiter, async (req, res) => {
     if (isFounderQuestion(userText)) return send(founderAnswer(userText));
 
     const direct = findBuiltInBusinessAnswer(userText, messages);
-    if (direct) return send(direct);
+    const detailed = userText.trim().split(/\s+/).length > 8;
+
+    // Short questions get the verified answer instantly; longer, specific questions
+    // get a tailored AI answer grounded in the same knowledge, falling back to the verified one.
+    if (direct && !detailed) return send(direct);
+    if (direct && detailed) {
+      try {
+        const answer = await callProviderWithFallback(messages, "", memory);
+        if (answer) return send(answer);
+      } catch (error) {
+        console.error("Detailed answer failed:", error?.message || error);
+      }
+      return send(direct);
+    }
 
     if (isBusinessFactQuestion(userText)) {
       const sheetResults = await getSheetKnowledge(userText);
