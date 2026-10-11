@@ -526,7 +526,7 @@ async function callProviderWithFallback(conversationMessages, knowledgeContext =
       const cleaned = cleanProviderOutput(content);
       const lastUser = [...conversationMessages].reverse().find((m) => m.role === "user")?.content || "";
       const mentioned = (lastUser.match(/\b(praveen|karri)\b/gi) || []).join(" ");
-      if (cleaned && violatesFounderRule(cleaned.message, [memory?.name, mentioned].filter(Boolean).join(" "))) return founderAnswer("");
+      if (cleaned && violatesFounderRule(cleaned.message, [memory?.name, mentioned].filter(Boolean).join(" "))) return founderAnswer(lastUser);
       if (cleaned) return cleaned;
 
       throw new Error(provider + " returned empty content");

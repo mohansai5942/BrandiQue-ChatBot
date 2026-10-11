@@ -31,9 +31,13 @@ const CONTACT = {
 };
 
 const FOUNDER_ANSWER = [
-  "- BrandiQue Web Solutions has **one founder: K. Mohan Rao** (Kutikuppala Mohan Rao).",
-  "- There are **no co-founders**. Mohan is the founder and leads the company.",
-  "- He personally guides every project across web development, AI automation and design."
+  "- The founder of BrandiQue Web Solutions is **K. Mohan Rao** (Kutikuppala Mohan Rao), based in Visakhapatnam.",
+  "- He leads the company and personally guides every project across web development, AI automation and design."
+].join("\n");
+
+const COFOUNDER_ANSWER = [
+  "- No, BrandiQue doesn't have co-founders.",
+  "- **K. Mohan Rao** (Kutikuppala Mohan Rao) is the founder and leads the company."
 ].join("\n");
 
 const SYSTEM_PROMPT = `
@@ -55,8 +59,8 @@ FORMAT (mandatory)
 
 FOUNDER RULE (absolute)
 - BrandiQue Web Solutions has exactly ONE founder: K. Mohan Rao (Kutikuppala Mohan Rao). He is the founder and the person who leads the company (owner, CEO, head, everything).
-- There are NO co-founders and no other founders, partners, owners or CEO. If asked about a co-founder, partner or another leader, say clearly: BrandiQue has one founder, K. Mohan Rao, and there are no co-founders.
-- Never name, describe or discuss any other team member. If asked about any other person, say you can only share information about the founder, K. Mohan Rao, and BrandiQue's services.
+- There are no co-founders, partners or other owners. Say so ONLY when the visitor asks about co-founders or partners; never bring it up otherwise.
+- Never name, describe or discuss any other team member. If asked about any other person, simply and naturally say you don't know who that is (as if you have never heard the name), then offer help with BrandiQue's services. Do not mention founders or co-founders in that reply, and never sound like you are hiding anyone.
 
 COMPANY
 - BrandiQue Web Solutions, a growth studio based in ${CONTACT.location}, working with clients across India and worldwide.
@@ -137,19 +141,21 @@ function isFounderQuestion(t) {
 function founderAnswer(t) {
   if (askedAboutPerson(t, "(praveen|karri)")) {
     return {
-      message: "- There is **no one named Praveen** at BrandiQue Web Solutions.\n" +
-        "- BrandiQue has **one founder: K. Mohan Rao**, and no co-founders.\n" +
-        "- Want to know about our services or start a project?",
-      links: links("about", "contact")
+      message: "- Sorry, I'm not sure who that is 🙂\n" +
+        "- I can help with BrandiQue's **websites**, **AI agents & automations** and **graphic design**. What are you looking for?",
+      links: []
     };
   }
   if (/\b(mohan|kutikuppala)\b/i.test(t) && !/co[- ]?founder|partner/i.test(t)) {
     return {
       message: "- **K. Mohan Rao** (Kutikuppala Mohan Rao) is the **founder** of BrandiQue Web Solutions, based in Visakhapatnam.\n" +
         "- He works across web & app engineering, AI automation and design, turning ideas into digital products that grow businesses.\n" +
-        "- He is the only founder and personally guides every project.",
+        "- He leads BrandiQue and personally guides every project.",
       links: links("about", "contact")
     };
+  }
+  if (/co[- ]?founders?|cofounders?|partners?|another founder|other founders?|second founder/i.test(t)) {
+    return { message: COFOUNDER_ANSWER, links: links("about", "contact") };
   }
   return { message: FOUNDER_ANSWER, links: links("about", "contact") };
 }
