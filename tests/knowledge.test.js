@@ -115,3 +115,24 @@ test("voice billing FAQs", () => {
   assert.equal(matchIntent("chatbot price entha?"), ANSWERS.chatbot);
   assert.equal(matchIntent("website support"), ANSWERS.web);
 });
+
+test("services questions list all 4 services incl. voice", () => {
+  for (const q of ["meeru emi services istaru?", "what services do you offer?", "meeru emi chestaru", "mee services enti?"]) {
+    const a = matchIntent(q);
+    assert.equal(a, ANSWERS.services, q);
+    for (const s of ["Web Development", "AI Agents & Automations", "Graphic Design", "Voice Calling AI Agents"]) assert.match(a.message, new RegExp(s), `${q} -> ${s}`);
+    assert.match(a.message, /4 core services/);
+  }
+});
+
+test("voice knowledge: use cases, how it works, FAQs, Starter 'Includes'", () => {
+  assert.equal(matchIntent("voice agent use cases"), ANSWERS.voiceUseCases);
+  assert.equal(matchIntent("which businesses can use voice calling agent?"), ANSWERS.voiceUseCases);
+  assert.equal(matchIntent("how does the voice agent work?"), ANSWERS.voiceHowItWorks);
+  assert.equal(matchIntent("voice ai faqs"), ANSWERS.voiceFaq);
+  assert.match(ANSWERS.voiceFaq.message, /₹2,799[\s\S]*₹6,999[\s\S]*₹22,999[\s\S]*₹8\.90[\s\S]*₹2,848[\s\S]*₹1,999[\s\S]*18% GST/);
+  assert.match(ANSWERS.voiceStarter.message, /Includes \*\*voice cloning\*\*/);
+  const all = JSON.stringify(ANSWERS) + SYSTEM_PROMPT;
+  assert.doesNotMatch(all, /Everything in Free/);
+  assert.match(SYSTEM_PROMPT, /Use cases:[\s\S]*How it works/);
+});

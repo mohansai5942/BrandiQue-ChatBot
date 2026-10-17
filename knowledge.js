@@ -91,9 +91,12 @@ COMPANY
 4) VOICE CALLING AI AGENTS (/services/voice-ai-agents)
 - AI voice agents that phone new leads within seconds (instant lead calling) and run bulk reminder / renewal / follow-up call campaigns (up to 20 calls at a time). Each agent works in one mode: instant lead calling or bulk campaigns.
 - Native Telugu, switching to English mid-call. (Hindi and inbound call answering are NOT offered; never claim them.)
+- Features: instant lead calling; bulk call campaigns (up to 20 calls at a time); Google Calendar booking during the call; WhatsApp confirmations and follow-ups; automatic transcripts and call summaries with per-call cost in the call log; CRM, webhook and Pabbly Connect integrations; dedicated +91 line (DLT-registered).
+- Use cases: coaching centres & colleges (call admission enquiries instantly, book campus visits, fee-due reminders); clinics & diagnostic centres (appointment confirmations, follow-up visit reminders); real estate & builders (call fresh ad leads in seconds, book site visits); shops, finance & service businesses (renewal, EMI and service-due reminder campaigns).
+- How it works (4 steps): 1) Describe the job: who to call, what the agent says, what a good outcome is. 2) Pick a plan: monthly (Starter, Pro, Growth) or pay as you go. 3) Connect your tools: +91 line, CRM, webhooks, Google Calendar, WhatsApp. 4) Live the same day: the agent starts calling, with transcripts, summaries and per-call costs in the call log.
 - Pricing (all prices in INR, PLUS 18% GST): choose a MONTHLY SUBSCRIPTION or PAY AS YOU GO, plus a ONE-TIME setup fee of **₹1,999**. Never say there is no setup fee. Never quote any per-minute "Starter ₹5 / Growth ₹8 / Premium ₹11" tiers; they no longer exist, and there is no "Premium" voice plan.
   MONTHLY PLANS (minutes included each month):
-  **Starter ₹2,799/month**: "For your first live voice agent." 317 mins included (₹8.83/min). Team members 2, knowledge base 10 MB. Everything in Free, plus voice cloning, WhatsApp, SIP trunking.
+  **Starter ₹2,799/month**: "For your first live voice agent." 317 mins included (₹8.83/min). Team members 2, knowledge base 10 MB. Includes voice cloning, WhatsApp, SIP trunking. (There is NO Free plan; never mention one.)
   **Pro ₹6,999/month** (most popular): "For teams running a live pilot." 1,000 mins included (₹7.00/min). Team members 5, knowledge base 50 MB. Everything in Starter, plus live call monitoring, voicemail detection, agent versioning, workflow builder (10,000 runs/mo).
   **Growth ₹22,999/month**: "For teams scaling past the pilot." 3,571 mins included (₹6.44/min). Team members 10, knowledge base 100 MB. Everything in Pro, plus recording insights, email channel, SMS channel, workflow builder (100,000 runs/mo).
   PAY AS YOU GO: top up voice AI minutes at **₹8.90/min**, minimum 320 minutes (**₹2,848**), on any plan. Minutes are bought in steps of 10 (320, 330, 340, …). Top up ₹7,000 or more (830+ minutes) and the rate is **₹8.47/min** with **+2% bonus minutes**. Pay as you go has the base voice agent features only; voice cloning, SIP trunking, WhatsApp and voicemail detection need a monthly plan. Example: 500 minutes = 500 × ₹8.90 = ₹4,450 + 18% GST.
@@ -196,7 +199,8 @@ const ANSWERS = {
     links: links("about", "services")
   },
   services: {
-    message: "- **Web Development** from **₹9,000**: business, e-commerce and portfolio websites built to bring enquiries.\n" +
+    message: "We offer **4 core services**:\n" +
+      "- **Web Development** from **₹9,000**: business, e-commerce and portfolio websites built to bring enquiries.\n" +
       "- **AI Agents & Automations** from **₹12,000**: WhatsApp and website chatbots, lead capture, automatic follow-ups, n8n workflows.\n" +
       "- **Graphic Design** from **₹4,500**: logos, brand kits, social media and ad creatives.\n" +
       "- **Voice Calling AI Agents** from **₹2,799/month** (317 mins) or pay as you go from **₹2,848**, plus a one-time **₹1,999** setup: AI agents that call your leads in Telugu and English.\n" +
@@ -251,6 +255,30 @@ const ANSWERS = {
       "- Monthly plans from **₹2,799/month** (317 mins included), or **pay as you go** at **₹8.90/min** from **₹2,848**. One-time setup fee **₹1,999**; prices + 18% GST.",
     links: links("voice", "contact")
   },
+  voiceUseCases: {
+    message: "- **Coaching centres & colleges**: call every admission enquiry instantly, book campus visits, remind parents about fee dues.\n" +
+      "- **Clinics & diagnostic centres**: appointment confirmations and follow-up visit reminders.\n" +
+      "- **Real estate & builders**: call fresh ad leads in seconds and book site visits for your sales team.\n" +
+      "- **Shops, finance & service businesses**: renewal, EMI and service-due reminder campaigns.\n" +
+      "- Plans from **₹2,799/month** (317 mins) or pay as you go from **₹2,848**; **₹1,999** one-time setup; + 18% GST.",
+    links: links("voice", "contact")
+  },
+  voiceHowItWorks: {
+    message: "- **1. Describe the job**: who to call, what the agent should say and what a good outcome looks like.\n" +
+      "- **2. Pick a plan**: monthly (Starter ₹2,799, Pro ₹6,999, Growth ₹22,999) or pay as you go (₹8.90/min from 320 mins).\n" +
+      "- **3. Connect your tools**: your +91 line, CRM, webhooks, Google Calendar and WhatsApp follow-ups.\n" +
+      "- **4. Live the same day**: the agent calls in Telugu (English mid-call), with transcripts, summaries and per-call costs in the call log.\n" +
+      "- One-time setup fee **₹1,999**; all prices + 18% GST.",
+    links: links("voice", "contact")
+  },
+  voiceFaq: {
+    message: "- **Languages**: native Telugu, switching to English mid-call. Outbound calling only (no inbound answering).\n" +
+      "- **Pricing**: monthly Starter **₹2,799** (317 mins), Pro **₹6,999** (1,000 mins, most popular), Growth **₹22,999** (3,571 mins), or pay as you go **₹8.90/min** from 320 mins (₹2,848).\n" +
+      "- **Extra**: **₹1,999** one-time setup fee; all prices **+ 18% GST**. Ring time and unanswered calls are not billed.\n" +
+      "- **Free trial?** No, but we can arrange a free demo call. **Change plans** any time; top up minutes if you run out.\n" +
+      "- **Support**: Starter/Pro email (24-hour response), Growth email + Slack + WhatsApp (12-hour).",
+    links: links("voice", "pricing", "contact")
+  },
   voicePricing: {
     message: "- **Monthly plans** (minutes included): **Starter ₹2,799/month** (317 mins, ₹8.83/min), **Pro ₹6,999/month** (1,000 mins, ₹7.00/min, most popular), **Growth ₹22,999/month** (3,571 mins, ₹6.44/min).\n" +
       "- **Pay as you go**: **₹8.90/min**, minimum 320 minutes (**₹2,848**). Top up ₹7,000+ for **₹8.47/min** and **+2% bonus minutes**.\n" +
@@ -295,7 +323,7 @@ const ANSWERS = {
   voiceStarter: {
     message: "- **Voice Starter: ₹2,799/month**, for your first live voice agent.\n" +
       "- **317 mins included** (₹8.83/min) · 2 team members · 10 MB knowledge base.\n" +
-      "- Everything in Free, plus **voice cloning**, **WhatsApp** and **SIP trunking**.\n" +
+      "- Includes **voice cloning**, **WhatsApp** and **SIP trunking**.\n" +
       "- Plus a one-time **₹1,999** setup fee and 18% GST.\n" +
       "- (Looking for the website **Website Starter** package instead? That is **₹9,000** one-time.)",
     links: links("voice", "contact")
@@ -608,6 +636,9 @@ function matchIntent(raw) {
     if (/\b(differen\w*|compare|comparison|tedha|teda|which plan)\b/.test(t)) return ANSWERS.voiceDifferences;
     if (/\bpremium\b/.test(t)) return ANSWERS.voicePricing;
     if (price || /\b(plans?|tiers?|per minute|minutes?)\b/.test(t)) return ANSWERS.voicePricing;
+    if (/\b(faqs?|common questions|frequently asked)\b/.test(t)) return ANSWERS.voiceFaq;
+    if (/\b(use ?cases?|who (can|should) use|which (businesses|industries)|industries|examples?|evariki|ela vadali|ela use)\b/.test(t)) return ANSWERS.voiceUseCases;
+    if (/\b(how (does|do|will) (it|the|this|a|your|voice)|how it works|process|steps|setup process|ela (work|panichest)\w*|ela chestundi|ela pani)\b/.test(t)) return ANSWERS.voiceHowItWorks;
     return ANSWERS.voice;
   }
   // A bare "setup fee" question that names no other service is about the voice agent setup fee.
@@ -631,7 +662,7 @@ function matchIntent(raw) {
   if (/\b(design|designs|graphic|creatives?|posters?|flyers?|thumbnails?|banners?|social media posts?|instagram posts?)\b/.test(t)) return ANSWERS.design;
   if (/\b(seo|google ranking|search engine|google business)\b/.test(t)) return ANSWERS.seo;
   if (/\b(website|websites|web site|web development|landing page|portfolio website|site)\b/.test(t)) return ANSWERS.web;
-  if (/\b(all services|services|what do you (offer|do)|offerings)\b/.test(t)) return ANSWERS.services;
+  if (/\b(all services|services?|servicelu|what do you (offer|do|provide)|what can you do|offerings|emi chesta(ru|v)|em chesta(ru|v)|emi (istaru|provide))\b/.test(t)) return ANSWERS.services;
   if (price) return ANSWERS.pricing;
   if (/\b(projects?|portfolio|work samples?|previous work|clients?|case stud(y|ies))\b/.test(t)) return ANSWERS.projects;
   if (/\b(quote|quotation|estimate|start a project|hire)\b/.test(t)) return ANSWERS.quote;
