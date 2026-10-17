@@ -91,13 +91,15 @@ COMPANY
 4) VOICE CALLING AI AGENTS (/services/voice-ai-agents)
 - AI voice agents that phone new leads within seconds (instant lead calling) and run bulk reminder / renewal / follow-up call campaigns (up to 20 calls at a time). Each agent works in one mode: instant lead calling or bulk campaigns.
 - Native Telugu, switching to English mid-call. (Hindi and inbound call answering are NOT offered; never claim them.)
-- Pricing: a ONE-TIME setup fee of **₹1,999**, then ONLY per connected minute. There is NO monthly fee, NO per-agent fee and NO subscription. Never say there is no setup fee, and never mention any monthly or agent fee.
-  Total cost = ₹1,999 one-time setup + connected minutes × the plan's per-minute rate.
-  **Starter ₹5/min**: "Budget-friendly. Mostly used for bulk calling campaigns." Features: Native Multilingual, Value Voices, Low Latency, Budget bulk calling.
-  **Growth ₹8/min** (most popular): "The All-Rounder. High realism for everyday customer interactions and support." Features: Native Multilingual, Standard Voices, Low Latency, The All-Rounder.
-  **Premium ₹11/min**: "Curated native speakers. The most real-like voices from our exclusive library." Features: Native Multilingual, Premium Voices, Ultra-low Latency, Custom integrations.
-- Billing: per second, rounded up to the nearest 30 seconds, from prepaid credit. Ring time and unanswered calls are not billed. If credit runs out mid-call the agent ends with a short goodbye.
-- Versus a telecaller (~₹18,000/month, ₹5,000–₹20,000 recruitment, 2–6 weeks training, one shift, one call at a time, high attrition): the agent costs a one-time ₹1,999 setup and then only per minute from ₹5/min, with no monthly fee; same-day, 24/7, up to 20 calls at once, notes on every call. A person still handles genuinely new situations better.
+- Pricing (all prices in INR, PLUS 18% GST): choose a MONTHLY SUBSCRIPTION or PAY AS YOU GO, plus a ONE-TIME setup fee of **₹1,999**. Never say there is no setup fee. Never quote any per-minute "Starter ₹5 / Growth ₹8 / Premium ₹11" tiers; they no longer exist, and there is no "Premium" voice plan.
+  MONTHLY PLANS (minutes included each month):
+  **Starter ₹2,799/month**: "For your first live voice agent." 317 mins included (₹8.83/min). Team members 2, knowledge base 10 MB. Everything in Free, plus voice cloning, WhatsApp, SIP trunking.
+  **Pro ₹6,999/month** (most popular): "For teams running a live pilot." 1,000 mins included (₹7.00/min). Team members 5, knowledge base 50 MB. Everything in Starter, plus live call monitoring, voicemail detection, agent versioning, workflow builder (10,000 runs/mo).
+  **Growth ₹22,999/month**: "For teams scaling past the pilot." 3,571 mins included (₹6.44/min). Team members 10, knowledge base 100 MB. Everything in Pro, plus recording insights, email channel, SMS channel, workflow builder (100,000 runs/mo).
+  PAY AS YOU GO: top up voice AI minutes at **₹8.90/min**, minimum 320 minutes (**₹2,848**), on any plan. Top up ₹7,000 or more (827+ minutes) and the rate is **₹8.47/min** with **+2% bonus minutes**. Pay as you go has the base voice agent features only; voice cloning, SIP trunking, WhatsApp and voicemail detection need a monthly plan. Example: 500 minutes = 500 × ₹8.90 = ₹4,450 + 18% GST.
+  There IS a monthly fee on monthly plans; pay as you go has no monthly commitment. Cancel monthly plans any time, no lock-in.
+- Billing: per second, rounded up to the nearest 30 seconds, from plan minutes and top-ups. Ring time and unanswered calls are not billed. If the balance runs out mid-call the agent ends with a short goodbye.
+- Versus a telecaller (~₹18,000/month, ₹5,000–₹20,000 recruitment, 2–6 weeks training, one shift, one call at a time, high attrition): the agent costs from ₹2,799/month (317 mins) or pay as you go from ₹2,848, plus a one-time ₹1,999 setup; same-day, 24/7, up to 20 calls at once, notes on every call. A person still handles genuinely new situations better.
 
 MONTHLY MEMBERSHIPS (/pricing), 3-month minimum then month to month
 - Web Care **₹1,999**, Web Growth **₹3,999**
@@ -193,7 +195,7 @@ const ANSWERS = {
     message: "- **Web Development** from **₹9,000**: business, e-commerce and portfolio websites built to bring enquiries.\n" +
       "- **AI Agents & Automations** from **₹12,000**: WhatsApp and website chatbots, lead capture, automatic follow-ups, n8n workflows.\n" +
       "- **Graphic Design** from **₹4,500**: logos, brand kits, social media and ad creatives.\n" +
-      "- **Voice Calling AI Agents** from **₹5/min** plus a one-time **₹1,999** setup, no monthly fee: AI agents that call your leads in Telugu and English.\n" +
+      "- **Voice Calling AI Agents** from **₹2,799/month** (317 mins) or pay as you go from **₹2,848**, plus a one-time **₹1,999** setup: AI agents that call your leads in Telugu and English.\n" +
       "- Monthly memberships from **₹1,999** keep everything running.",
     links: links("web", "ai", "voice")
   },
@@ -242,63 +244,84 @@ const ANSWERS = {
     message: "- **Voice Calling AI Agents**: AI agents that call your new leads within seconds and run bulk reminder and follow-up campaigns (up to 20 calls at a time).\n" +
       "- Speaks native **Telugu**, switching to **English** mid-call.\n" +
       "- Automatic transcripts and call summaries, Google Calendar booking, WhatsApp follow-ups and CRM / webhook / Pabbly Connect integrations.\n" +
-      "- One-time setup fee **₹1,999**, then pay only per connected minute, no monthly fee: **Starter ₹5/min**, **Growth ₹8/min**, **Premium ₹11/min**.",
+      "- Monthly plans from **₹2,799/month** (317 mins included), or **pay as you go** at **₹8.90/min** from **₹2,848**. One-time setup fee **₹1,999**; prices + 18% GST.",
     links: links("voice", "contact")
   },
   voicePricing: {
-    message: "- **Starter ₹5/min**: Budget-friendly. Mostly used for bulk calling campaigns.\n" +
-      "- **Growth ₹8/min** (most popular): The All-Rounder. High realism for everyday customer interactions and support.\n" +
-      "- **Premium ₹11/min**: Curated native speakers. The most real-like voices from our exclusive library.\n" +
-      "- **One-time setup fee ₹1,999**, **no monthly fee**: after setup you pay only per connected minute. Ring time and unanswered calls are not billed.\n" +
-      "- Total cost = **₹1,999 once** + your connected minutes × the plan rate (e.g. 500 minutes on Growth = ₹4,000 in calls).",
+    message: "- **Monthly plans** (minutes included): **Starter ₹2,799/month** (317 mins, ₹8.83/min), **Pro ₹6,999/month** (1,000 mins, ₹7.00/min, most popular), **Growth ₹22,999/month** (3,571 mins, ₹6.44/min).\n" +
+      "- **Pay as you go**: **₹8.90/min**, minimum 320 minutes (**₹2,848**). Top up ₹7,000+ for **₹8.47/min** and **+2% bonus minutes**.\n" +
+      "- **One-time setup fee ₹1,999**. All prices **+ 18% GST**, added at checkout.\n" +
+      "- Ring time and unanswered calls are not billed.",
     links: links("voice", "contact")
   },
   voiceSetup: {
     message: "- **Voice Calling AI Agents: one-time setup fee ₹1,999.**\n" +
-      "- **No monthly fee** and no per-agent fee after that.\n" +
-      "- You pay **only per connected minute**: **Starter ₹5/min**, **Growth ₹8/min**, **Premium ₹11/min**. Ring time and unanswered calls are not billed.\n" +
+      "- Then a monthly plan (**Starter ₹2,799**, **Pro ₹6,999** or **Growth ₹22,999** a month, minutes included) or **pay as you go** at **₹8.90/min** from **₹2,848**.\n" +
+      "- All prices + 18% GST.\n" +
       "- (Website, AI and design projects get a fixed written quote; industry Autopilots have their own setup prices.)",
     links: links("voice", "contact")
   },
-  voiceNoMonthly: {
-    message: "- **No monthly fee** for Voice Calling AI Agents, and no per-agent fee. There is a one-time setup fee of **₹1,999**.\n" +
-      "- You pay **only per connected minute**: **Starter ₹5/min**, **Growth ₹8/min**, **Premium ₹11/min**.\n" +
-      "- Ring time and unanswered calls are not billed.",
+  voiceMonthly: {
+    message: "- **Yes, if you choose a monthly plan**: **Starter ₹2,799**, **Pro ₹6,999** or **Growth ₹22,999** a month, each with minutes included (317 / 1,000 / 3,571).\n" +
+      "- Don't want a monthly fee? Use **pay as you go**: top up minutes at **₹8.90/min** from **₹2,848**, no monthly commitment.\n" +
+      "- Plus a one-time setup fee of **₹1,999** and 18% GST. Monthly plans can be cancelled any time.",
+    links: links("voice", "contact")
+  },
+  voicePayg: {
+    message: "- **Pay as you go**: top up voice AI minutes at **₹8.90/min**, minimum **320 minutes = ₹2,848**, on any plan.\n" +
+      "- Top up **₹7,000 or more** (827+ minutes) for **₹8.47/min** and **+2% bonus minutes**.\n" +
+      "- Example: 500 minutes = 500 × ₹8.90 = **₹4,450 + GST**.\n" +
+      "- Voice cloning, SIP trunking, WhatsApp and voicemail detection need a monthly plan (from ₹2,799/month).\n" +
+      "- Plus 18% GST at checkout and a one-time setup fee of **₹1,999**.",
+    links: links("voice", "contact")
+  },
+  voiceGst: {
+    message: "- **GST is extra**: all voice agent prices are **+ 18% GST**, added at checkout.\n" +
+      "- Example: 500 pay-as-you-go minutes = ₹4,450 + ₹801 GST = **₹5,251**.\n" +
+      "- Starter ₹2,799/month + GST = ₹3,303; Pro ₹6,999 + GST = ₹8,259; Growth ₹22,999 + GST = ₹27,139.",
     links: links("voice", "contact")
   },
   voiceDifferences: {
-    message: "- **Starter ₹5/min**: Native Multilingual · Value Voices · Low Latency · Budget bulk calling. Budget-friendly, mostly used for bulk calling campaigns.\n" +
-      "- **Growth ₹8/min**: Native Multilingual · Standard Voices · Low Latency · The All-Rounder. High realism for everyday customer interactions and support.\n" +
-      "- **Premium ₹11/min**: Native Multilingual · Premium Voices · Ultra-low Latency · Custom integrations. Curated native speakers, the most real-like voices.\n" +
-      "- Every plan: one-time setup fee **₹1,999**, no monthly fee; then you pay only per connected minute.",
+    message: "- **Starter ₹2,799/month**: 317 mins (₹8.83/min), 2 team members, 10 MB knowledge base · voice cloning · WhatsApp · SIP trunking.\n" +
+      "- **Pro ₹6,999/month** (most popular): 1,000 mins (₹7.00/min), 5 team members, 50 MB · everything in Starter + live call monitoring · voicemail detection · agent versioning · workflow builder (10,000 runs/mo).\n" +
+      "- **Growth ₹22,999/month**: 3,571 mins (₹6.44/min), 10 team members, 100 MB · everything in Pro + recording insights · email channel · SMS channel · workflow builder (100,000 runs/mo).\n" +
+      "- **Pay as you go**: ₹8.90/min from ₹2,848, base features only. One-time setup **₹1,999**; all prices + 18% GST.",
     links: links("voice", "contact")
   },
   voiceStarter: {
-    message: "- **Voice Starter: ₹5 per connected minute**, plus a one-time **₹1,999** setup fee; no monthly fee.\n" +
-      "- Budget-friendly. Mostly used for bulk calling campaigns.\n" +
-      "- Native Multilingual · Value Voices · Low Latency · Budget bulk calling.\n" +
+    message: "- **Voice Starter: ₹2,799/month**, for your first live voice agent.\n" +
+      "- **317 mins included** (₹8.83/min) · 2 team members · 10 MB knowledge base.\n" +
+      "- Everything in Free, plus **voice cloning**, **WhatsApp** and **SIP trunking**.\n" +
+      "- Plus a one-time **₹1,999** setup fee and 18% GST.\n" +
       "- (Looking for the website **Website Starter** package instead? That is **₹9,000** one-time.)",
     links: links("voice", "contact")
   },
+  voicePro: {
+    message: "- **Voice Pro: ₹6,999/month** (most popular), for teams running a live pilot.\n" +
+      "- **1,000 mins included** (₹7.00/min) · 5 team members · 50 MB knowledge base.\n" +
+      "- Everything in Starter (voice cloning, WhatsApp, SIP trunking), plus **live call monitoring**, **voicemail detection**, **agent versioning** and the **workflow builder (10,000 runs/mo)**.\n" +
+      "- Plus a one-time **₹1,999** setup fee and 18% GST.",
+    links: links("voice", "contact")
+  },
   voiceGrowth: {
-    message: "- **Voice Growth: ₹8 per connected minute**, plus a one-time **₹1,999** setup fee; no monthly fee. Our most popular voice plan.\n" +
-      "- The All-Rounder. High realism for everyday customer interactions and support.\n" +
-      "- Native Multilingual · Standard Voices · Low Latency · The All-Rounder.\n" +
+    message: "- **Voice Growth: ₹22,999/month**, for teams scaling past the pilot.\n" +
+      "- **3,571 mins included** (₹6.44/min) · 10 team members · 100 MB knowledge base.\n" +
+      "- Everything in Pro, plus **recording insights**, **email channel**, **SMS channel** and the **workflow builder (100,000 runs/mo)**.\n" +
+      "- Plus a one-time **₹1,999** setup fee and 18% GST.\n" +
       "- (Looking for the **Growth** monthly bundle of website, AI and design care instead? That is **₹6,999/month**.)",
     links: links("voice", "contact")
   },
-  voicePremium: {
-    message: "- **Voice Premium: ₹11 per connected minute**, plus a one-time **₹1,999** setup fee; no monthly fee.\n" +
-      "- Curated native speakers. The most real-like voices from our exclusive library.\n" +
-      "- Native Multilingual · Premium Voices · Ultra-low Latency · Custom integrations.",
-    links: links("voice", "contact")
-  },
   voiceVsTelecaller: {
-    message: "- **Cost**: **₹1,999 one-time setup + from ₹5/min**, no monthly fee, versus around ₹18,000 a month plus ₹5,000–₹20,000 recruitment for a telecaller.\n" +
+    message: "- **Cost**: from **₹2,799/month** (317 mins) or pay as you go from **₹2,848**, plus a one-time **₹1,999** setup, versus around ₹18,000 a month plus ₹5,000–₹20,000 recruitment for a telecaller.\n" +
       "- **Speed**: live the same day instead of 2–6 weeks of training; works 24/7 all year.\n" +
       "- **Scale**: up to 20 calls at once in campaigns, with notes written for every call.\n" +
       "- A person still handles genuinely new situations better, so the agent takes the repetitive calls and your team handles the rest.",
     links: links("voice", "contact")
+  },
+  monthlyFee: {
+    message: "- **Voice Calling AI Agents**: monthly plans **Starter ₹2,799**, **Pro ₹6,999**, **Growth ₹22,999** (minutes included), or **pay as you go** from **₹2,848** (no monthly commitment). One-time setup ₹1,999; + 18% GST.\n" +
+      "- **Websites, AI automation and design** are one-time projects; monthly care memberships are optional, from **₹1,999/month**.",
+    links: links("voice", "pricing", "contact")
   },
   logo: {
     message: "- **Brand Identity Kit from ₹8,000**.\n" +
@@ -311,7 +334,7 @@ const ANSWERS = {
     message: "- **Web Development**: Starter **₹9,000**, Business **₹15,000**, E-commerce from **₹25,000**.\n" +
       "- **AI Agents & Automations**: Lead Automation **₹12,000**, AI Chatbot from **₹15,000**, Custom Agents from **₹20,000**.\n" +
       "- **Graphic Design**: Starter Pack **₹4,500**, Campaign Pack **₹7,500**, Brand Kit from **₹8,000**.\n" +
-      "- **Voice Calling AI Agents**: one-time setup **₹1,999**, no monthly fee, then per connected minute: **₹5** (Starter), **₹8** (Growth) or **₹11** (Premium).\n" +
+      "- **Voice Calling AI Agents**: monthly **Starter ₹2,799**, **Pro ₹6,999**, **Growth ₹22,999** (minutes included), or pay as you go **₹8.90/min** from **₹2,848**; + one-time setup **₹1,999** and 18% GST.\n" +
       "- Monthly plans from **₹1,999**. Prices are starting points; you get a fixed written quote.",
     links: links("pricing", "contact")
   },
@@ -447,24 +470,62 @@ const ANSWERS = {
   }
 };
 
+for (const k of ["voice", "voicePricing", "voiceSetup", "voiceMonthly", "voicePayg", "voiceGst", "voiceDifferences", "voiceStarter", "voicePro", "voiceGrowth", "voiceVsTelecaller", "monthlyFee"]) {
+  Object.defineProperty(ANSWERS[k], "voiceVerified", { value: true, enumerable: false });
+}
+
 // Voice Calling AI Agents: specific phrases only, so "call me" or "phone number" stay contact questions.
 function isVoiceQuestion(t) {
   return /\b(voice|voice ?bots?|voice ai|calling (ai )?agents?|ai (calling|calls?|caller|telecaller)|call(ing)? bots?|calling bots?|phone (ai|agents?|bots?)|telecall(er|ers|ing)|outbound calls?|inbound calls?|call campaigns?|bulk calls?|auto ?calls?|ai call)\b/i.test(t) ||
     (/\b(ai|agents?|bots?)\b/i.test(t) && /\b(calls?|phone)\s+(chese|chestu\w*|cheyy\w*|chesi|chestara)\b/i.test(t));
 }
 
-// Voice plan names (Starter / Growth / Premium). Other services also have a "Starter" or "Growth"
+// Voice pay-as-you-go maths (INR, excl. 18% GST). Mirrors the website's slider.
+const VOICE_PLANS = [
+  { name: "Starter", price: 2799, minutes: 317 },
+  { name: "Pro", price: 6999, minutes: 1000 },
+  { name: "Growth", price: 22999, minutes: 3571 },
+];
+const PAYG = { min: 320, base: 8.9, discount: 8.47, threshold: 7000, bonusPct: 2 };
+const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
+function paygQuote(rawMinutes) {
+  const minutes = Math.max(PAYG.min, Math.round(rawMinutes));
+  const discounted = minutes * PAYG.discount >= PAYG.threshold;
+  const rate = discounted ? PAYG.discount : PAYG.base;
+  const amount = Math.round(minutes * rate);
+  const bonus = discounted ? Math.floor(minutes * PAYG.bonusPct / 100) : 0;
+  return { minutes, rate, amount, bonus, discounted, gst: Math.round(amount * 0.18) };
+}
+function voiceMinutesAnswer(t) {
+  const m = t.match(/\b(\d{1,3}(?:,\d{3})+|\d{2,6})\s*(?:minutes?|mins?|nimishalu|nimishala)\b/);
+  if (!m) return null;
+  const asked = parseInt(m[1].replace(/,/g, ""), 10);
+  if (!asked) return null;
+  const q = paygQuote(asked);
+  const lines = [];
+  if (asked < PAYG.min) lines.push("- Minimum pay-as-you-go top-up is **" + PAYG.min + " minutes = " + inr(PAYG.min * PAYG.base) + "** + GST.");
+  lines.push("- **Pay as you go, " + q.minutes.toLocaleString("en-IN") + " minutes**: " + q.minutes.toLocaleString("en-IN") + " × ₹" + q.rate.toFixed(2) + " = **" + inr(q.amount) + " + 18% GST** (" + inr(q.gst) + ") = " + inr(q.amount + q.gst) + "." +
+    (q.discounted ? " Includes **+" + q.bonus + " bonus minutes** (2%), so you get " + (q.minutes + q.bonus).toLocaleString("en-IN") + " minutes." : ""));
+  if (!q.discounted) lines.push("- Top up ₹7,000+ (827+ minutes) for ₹8.47/min and +2% bonus minutes.");
+  const plan = VOICE_PLANS.find((p) => p.minutes >= asked);
+  if (plan) lines.push("- On a monthly plan: **" + plan.name + " " + inr(plan.price) + "/month** includes " + plan.minutes.toLocaleString("en-IN") + " mins" + (plan.price < q.amount ? " (cheaper than pay as you go for this many minutes)" : "") + ", + GST.");
+  else lines.push("- On a monthly plan: **Growth ₹22,999/month** includes 3,571 mins; top up the rest at the pay-as-you-go rate.");
+  lines.push("- Plus a one-time setup fee of **₹1,999** for a new agent.");
+  return { message: lines.join("\n"), links: links("voice", "contact"), voiceVerified: true };
+}
+
+// Voice plan names (Starter / Pro / Growth). Other services also have a "Starter" or "Growth"
 // offer, so a plan question only counts as voice when it names voice or no other service.
 const OTHER_SERVICE_RE = /\b(website|websites|web|design|designs|graphic|logo|brand|bundles?|scale|care|membership|memberships|monthly|all[- ]in[- ]one|e[- ]?commerce|chatbot|automation)\b/;
 function voicePlanAnswer(t) {
-  const plans = (t.match(/\b(starter|growth|premium)\b/g) || []);
+  const plans = (t.match(/\b(starter|pro|growth)\b/g) || []);
   if (!plans.length) return null;
   if (!isVoiceQuestion(t) && OTHER_SERVICE_RE.test(t)) return null;
   const unique = [...new Set(plans)];
   if (unique.length > 1 || /\b(differen\w*|compare|comparison|vs|versus|tedha|teda)\b/.test(t)) return ANSWERS.voiceDifferences;
   if (unique[0] === 'starter') return ANSWERS.voiceStarter;
-  if (unique[0] === 'growth') return ANSWERS.voiceGrowth;
-  return ANSWERS.voicePremium;
+  if (unique[0] === 'pro') return ANSWERS.voicePro;
+  return ANSWERS.voiceGrowth;
 }
 
 // Deterministic intent matching for verified facts (fast, never hallucinates).
@@ -477,19 +538,25 @@ function matchIntent(raw) {
 
   const price = /\b(price|pricing|prices|cost|costs|charges?|rate|rates|how much|fee|fees|budget|rs\.?|₹|entha|enta|packages?)\b/i.test(t);
 
+  const minutesQuote = voiceMinutesAnswer(t);
+  if (minutesQuote && (price || isVoiceQuestion(t) || /\b(ki|ku|kosam|for)\b/.test(t))) return minutesQuote;
+  if (/\b(pay[- ]?as[- ]?you[- ]?go|payg|top[- ]?ups?|recharge)\b/.test(t)) return ANSWERS.voicePayg;
   const voicePlan = voicePlanAnswer(t);
   if (voicePlan) return voicePlan;
+  if (isVoiceQuestion(t) && /\b(gst|tax|taxes)\b/.test(t)) return ANSWERS.voiceGst;
   if (isVoiceQuestion(t)) {
     if (/\b(setup|set[- ]up|installation|one[- ]time|onboarding)\b/.test(t) && !/\b(monthly|nelaki)\b/.test(t)) return ANSWERS.voiceSetup;
-    if (/\b(monthly|month|months|per month|nelaki|nelala|subscription|renewal|renew|agent fee|per agent|30 days)\b/.test(t)) return ANSWERS.voiceNoMonthly;
+    if (/\b(monthly|month|months|per month|nelaki|nelala|subscription|renewal|renew|agent fee|per agent|30 days)\b/.test(t)) return ANSWERS.voiceMonthly;
     if (/\b(telecaller|tele[- ]?caller|human|staff|employee|vs|versus|better than)\b/.test(t) && !/\bplans?\b/.test(t)) return ANSWERS.voiceVsTelecaller;
     if (/\b(differen\w*|compare|comparison|tedha|teda|which plan)\b/.test(t)) return ANSWERS.voiceDifferences;
+    if (/\bpremium\b/.test(t)) return ANSWERS.voicePricing;
     if (price || /\b(plans?|tiers?|per minute|minutes?)\b/.test(t)) return ANSWERS.voicePricing;
     return ANSWERS.voice;
   }
   // A bare "setup fee" question that names no other service is about the voice agent setup fee.
   if (/\b(setup|set[- ]up)\b/.test(t) && /\b(fee|fees|charges?|cost|price|entha|enta|how much)\b/.test(t) &&
       !OTHER_SERVICE_RE.test(t) && !/\b(autopilots?|solutions?|clinic|coaching|school|launch kit|sales desk|google|seo|ai|agents?|whatsapp)\b/.test(t)) return ANSWERS.voiceSetup;
+  if (/\b(monthly|month|nelaki)\b/.test(t) && /\b(fee|fees|charges?|unda|undha|untunda|untada|is there|any)\b/.test(t) && !OTHER_SERVICE_RE.test(t.replace(/\bmonthly\b/g, ""))) return ANSWERS.monthlyFee;
   if (/\b(bundles?|growth plan|scale plan|all[- ]in[- ]one)\b/.test(t)) return ANSWERS.bundles;
   if (/\b(care plans?|website care|ai agent monitoring)\b/i.test(t)) return ANSWERS.carePlans;
   if (/\b(autopilots?)\b/i.test(t)) return ANSWERS.autopilot;
@@ -621,5 +688,5 @@ function extractProfile(text, base = {}) {
 module.exports = {
   wantsLinks, extractProfile,
   PAGES, SYSTEM_PROMPT, ANSWERS, FOUNDER_ANSWER, CONTACT,
-  matchIntent, isVoiceQuestion, inferLinks, extractLinks, toBullets, violatesFounderRule, isFounderQuestion, founderAnswer, links
+  matchIntent, isVoiceQuestion, paygQuote, voiceMinutesAnswer, inferLinks, extractLinks, toBullets, violatesFounderRule, isFounderQuestion, founderAnswer, links
 };
