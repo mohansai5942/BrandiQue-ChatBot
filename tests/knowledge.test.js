@@ -57,9 +57,13 @@ test("500 minutes ki entha? -> PAYG 500 × ₹8.90 = ₹4,450 + GST", () => {
 });
 
 test("PAYG maths matches the website slider", () => {
-  assert.deepEqual([320, 500, 800, 826].map((n) => paygQuote(n).amount), [2848, 4450, 7120, 7351]);
-  const q = paygQuote(827); assert.equal(q.rate, 8.47); assert.equal(q.amount, 7005); assert.equal(q.bonus, 16);
+  assert.deepEqual([320, 500, 800, 820].map((n) => paygQuote(n).amount), [2848, 4450, 7120, 7298]);
+  const q = paygQuote(830); assert.equal(q.rate, 8.47); assert.equal(q.amount, 7030); assert.equal(q.bonus, 16);
   assert.equal(paygQuote(100).minutes, 320);
+  // 10-minute steps: 320, 330, 340, …
+  assert.deepEqual([321, 324, 325, 327, 333].map((n) => paygQuote(n).minutes), [320, 320, 330, 330, 330]);
+  assert.equal(paygQuote(826).minutes, 830);
+  assert.match(ask("327 minutes ki entha"), /steps of 10[\s\S]*330 minutes/);
 });
 
 test("voice GST and setup fee", () => {
@@ -86,4 +90,28 @@ test("other services keep their own answers", () => {
   assert.equal(matchIntent("growth bundle price"), ANSWERS.bundles);
   assert.equal(matchIntent("website starter price"), ANSWERS.web);
   assert.equal(matchIntent("call me on whatsapp"), ANSWERS.contact);
+});
+
+test("compare-table facts: message rates, broadcasts, support", () => {
+  for (const q of ["WhatsApp message rate entha?", "chatbot message rate entha", "whatsapp broadcast limit enni?", "is gst added to whatsapp message charges?", "marketing whatsapp messages cost more?"]) assert.equal(matchIntent(q), ANSWERS.voiceMessageRates, q);
+  const m = ANSWERS.voiceMessageRates.message;
+  assert.match(m, /Chatbot: ₹0\.84 per message/); assert.match(m, /WhatsApp: ₹0\.84 per outgoing message/);
+  assert.match(m, /Pro 2,000[\s\S]*Growth 10,000/); assert.match(m, /Incoming messages are free/);
+  for (const q of ["support response time entha?", "voice agent support emi untundi?", "slack support unda?"]) assert.equal(matchIntent(q), ANSWERS.voiceSupport, q);
+  assert.match(ANSWERS.voiceSupport.message, /Starter & Pro\*\*: email support, \*\*24-hour response[\s\S]*Growth\*\*: email, \*\*Slack and WhatsApp\*\* support, \*\*12-hour response/);
+  assert.match(SYSTEM_PROMPT, /₹0\.84 per message/); assert.match(SYSTEM_PROMPT, /12-hour response/);
+});
+
+test("voice billing FAQs", () => {
+  assert.equal(matchIntent("voice agent free trial unda?"), ANSWERS.voiceFreeTrial);
+  assert.match(ANSWERS.voiceFreeTrial.message, /no free trial[\s\S]*free demo call/);
+  assert.equal(matchIntent("can i change my voice plan anytime?"), ANSWERS.voiceChangePlan);
+  assert.equal(matchIntent("voice enterprise discount unda?"), ANSWERS.voiceEnterprise);
+  assert.match(ANSWERS.voiceEnterprise.message, /custom volume pricing/);
+  assert.equal(matchIntent("prompt limit entha?"), ANSWERS.voicePromptLimit);
+  assert.equal(matchIntent("voice agent extra charges emaina unnaya?"), ANSWERS.voiceExtraFees);
+  assert.match(ANSWERS.voiceExtraFees.message, /₹1,999[\s\S]*18% GST[\s\S]*₹0\.84/);
+  // Unrelated questions keep their answers.
+  assert.equal(matchIntent("chatbot price entha?"), ANSWERS.chatbot);
+  assert.equal(matchIntent("website support"), ANSWERS.web);
 });
