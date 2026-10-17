@@ -125,6 +125,7 @@ function contextualAnswer(userText, messages, profile = {}) {
   if (/\b(price|pricing|prices|cost|charges?|rates?|how much|fees?|entha|enta|plans?|packages?|differen\w*|compare|comparison|tedha|teda|monthly|month|nelaki|subscription|renewal)\b/i.test(text) && !matchIntentIsSpecific(text)) {
     const prevUser = (Array.isArray(messages) ? messages : []).filter((m) => m?.role === "user").map((m) => String(m.content || "").trim()).filter((c) => c && c !== text).slice(-1)[0];
     if (prevUser && isVoiceQuestion(prevUser.toLowerCase())) {
+      if (/\b(setup|set[- ]up|one[- ]time|installation)\b/i.test(text)) return ANSWERS.voiceSetup;
       if (/\b(monthly|month|months|nelaki|nelala|subscription|renewal|renew|agent fee|per agent)\b/i.test(text)) return ANSWERS.voiceNoMonthly;
       return /\b(differen\w*|compare|comparison|tedha|teda)\b/i.test(text) ? ANSWERS.voiceDifferences : ANSWERS.voicePricing;
     }
@@ -726,7 +727,7 @@ app.post("/api/chat", apiHourlyLimiter, apiLimiter, async (req, res) => {
     // get a tailored AI answer grounded in the same knowledge, falling back to the verified one.
     // Voice-agent plans and prices are always answered from the verified text, whatever the length,
     // so a model can never paraphrase a price or feature wrongly.
-    const VOICE_ANSWERS = [ANSWERS.voice, ANSWERS.voicePricing, ANSWERS.voiceDifferences, ANSWERS.voiceStarter, ANSWERS.voiceGrowth, ANSWERS.voicePremium, ANSWERS.voiceVsTelecaller, ANSWERS.voiceNoMonthly];
+    const VOICE_ANSWERS = [ANSWERS.voice, ANSWERS.voicePricing, ANSWERS.voiceDifferences, ANSWERS.voiceStarter, ANSWERS.voiceGrowth, ANSWERS.voicePremium, ANSWERS.voiceVsTelecaller, ANSWERS.voiceNoMonthly, ANSWERS.voiceSetup];
     if (direct && VOICE_ANSWERS.includes(direct)) return send(direct);
     if (direct && (!detailed || direct.links.length === 0)) return send(direct);
 

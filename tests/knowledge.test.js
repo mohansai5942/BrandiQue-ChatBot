@@ -30,10 +30,31 @@ test("voice agents: no monthly / agent fee, only per-minute billing", () => {
   }
   assert.match(ANSWERS.voiceNoMonthly.message, /No monthly fee/);
   assert.match(ANSWERS.voiceNoMonthly.message, /₹5\/min[\s\S]*₹8\/min[\s\S]*₹11\/min/);
-  assert.match(ask("voice agents price entha?"), /No monthly fee/);
+  assert.match(ask("voice agents price entha?"), /no monthly fee/i);
   for (const [k, a] of Object.entries(ANSWERS)) {
     assert.doesNotMatch(a.message, /2,099|2099|30 days|per agent \/|₹500 calling credit/, k);
   }
+});
+
+test("voice setup fee: ₹1,999 one-time, no monthly fee, per-minute 5/8/11", () => {
+  assert.equal(matchIntent("setup fee entha?"), ANSWERS.voiceSetup);
+  assert.equal(matchIntent("voice agent setup fee entha?"), ANSWERS.voiceSetup);
+  const s = ask("setup fee entha?");
+  assert.match(s, /one-time setup fee ₹1,999/);
+  assert.match(s, /No monthly fee/);
+  assert.match(s, /₹5\/min[\s\S]*₹8\/min[\s\S]*₹11\/min/);
+  const total = ask("voice agent total cost enti?");
+  assert.equal(matchIntent("voice agent total cost enti?"), ANSWERS.voicePricing);
+  assert.match(total, /One-time setup fee ₹1,999/);
+  assert.match(total, /no monthly fee/);
+  assert.match(total, /₹5\/min[\s\S]*₹8\/min[\s\S]*₹11\/min/);
+  assert.match(ask("voice agents monthly entha?"), /one-time setup fee of \*\*₹1,999\*\*/);
+  for (const q of ["Starter price entha?", "Growth price entha?", "Premium price entha?"]) assert.match(ask(q), /₹1,999\*\* setup fee/, q);
+  // No answer may claim there is no setup fee for voice agents.
+  for (const [k, a] of Object.entries(ANSWERS)) assert.doesNotMatch(a.message, /no setup fee|no setup or|setup fee ₹0/i, k);
+  // Other services' setup questions keep their own answers.
+  assert.notEqual(matchIntent("clinic autopilot setup price"), ANSWERS.voiceSetup);
+  assert.notEqual(matchIntent("website setup cost entha?"), ANSWERS.voiceSetup);
 });
 
 test("voice overview and no stale prices or unsupported claims", () => {
