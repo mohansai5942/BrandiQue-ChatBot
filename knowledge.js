@@ -96,8 +96,12 @@ COMPANY
   **Starter ₹2,799/month**: "For your first live voice agent." 317 mins included (₹8.83/min). Team members 2, knowledge base 10 MB. Everything in Free, plus voice cloning, WhatsApp, SIP trunking.
   **Pro ₹6,999/month** (most popular): "For teams running a live pilot." 1,000 mins included (₹7.00/min). Team members 5, knowledge base 50 MB. Everything in Starter, plus live call monitoring, voicemail detection, agent versioning, workflow builder (10,000 runs/mo).
   **Growth ₹22,999/month**: "For teams scaling past the pilot." 3,571 mins included (₹6.44/min). Team members 10, knowledge base 100 MB. Everything in Pro, plus recording insights, email channel, SMS channel, workflow builder (100,000 runs/mo).
-  PAY AS YOU GO: top up voice AI minutes at **₹8.90/min**, minimum 320 minutes (**₹2,848**), on any plan. Top up ₹7,000 or more (827+ minutes) and the rate is **₹8.47/min** with **+2% bonus minutes**. Pay as you go has the base voice agent features only; voice cloning, SIP trunking, WhatsApp and voicemail detection need a monthly plan. Example: 500 minutes = 500 × ₹8.90 = ₹4,450 + 18% GST.
+  PAY AS YOU GO: top up voice AI minutes at **₹8.90/min**, minimum 320 minutes (**₹2,848**), on any plan. Minutes are bought in steps of 10 (320, 330, 340, …). Top up ₹7,000 or more (830+ minutes) and the rate is **₹8.47/min** with **+2% bonus minutes**. Pay as you go has the base voice agent features only; voice cloning, SIP trunking, WhatsApp and voicemail detection need a monthly plan. Example: 500 minutes = 500 × ₹8.90 = ₹4,450 + 18% GST.
   There IS a monthly fee on monthly plans; pay as you go has no monthly commitment. Cancel monthly plans any time, no lock-in.
+  USAGE (all monthly plans): chatbot **₹0.84 per message**, WhatsApp **₹0.84 per outgoing message** (agent reply or campaign, same rate for marketing, utility and free text; incoming messages free). WhatsApp broadcast messages per month: Starter none, Pro **2,000**, Growth **10,000**. Meta bills its own WhatsApp template charges to the customer's WhatsApp Business account separately (vary by category and country). No GST is added per message (messages come out of the prepaid balance); 18% GST is charged on the plan or top-up invoice. WhatsApp calls use the plan's voice AI per-minute rate. No WhatsApp setup or monthly fee beyond the one-time ₹1,999 agent setup.
+  INCLUDED ON ALL PLANS: voice AI agents, call logs, integrations, knowledge base, voice cloning, WhatsApp, SIP trunking. Pro + Growth: live call monitoring, voicemail detection, agent versioning, workflow builder (Pro 10,000 executions/mo, Growth 100,000). Growth only: recording insights, email channel, SMS channel.
+  SUPPORT: Starter and Pro: email, **24-hour response**. Growth: email, Slack and WhatsApp, **12-hour response**.
+  VOICE FAQs: Plans can be upgraded or downgraded any time (or switch to pay as you go); changes are prorated and take effect immediately. When included minutes run out, calls continue from the top-up balance (₹8.90/min, ₹8.47 on ₹7,000+), or move to a higher plan for a lower rate. No free trial: offer a free demo call instead. No Enterprise plan: for volume above Growth, custom volume pricing on request (contact us). The monthly price is prepaid balance for minutes and messages; the plan decides features; top-ups add balance but do not unlock features; balance carries over. Keep agent prompts under about 10,000–13,000 characters (~3,500 tokens); we write and tune the script. Extra fees: ₹1,999 one-time setup, 18% GST, ₹0.84 per chatbot/WhatsApp message, Meta template charges, and anything extra (more numbers, more calls at once) quoted before approval.
 - Billing: per second, rounded up to the nearest 30 seconds, from plan minutes and top-ups. Ring time and unanswered calls are not billed. If the balance runs out mid-call the agent ends with a short goodbye.
 - Versus a telecaller (~₹18,000/month, ₹5,000–₹20,000 recruitment, 2–6 weeks training, one shift, one call at a time, high attrition): the agent costs from ₹2,799/month (317 mins) or pay as you go from ₹2,848, plus a one-time ₹1,999 setup; same-day, 24/7, up to 20 calls at once, notes on every call. A person still handles genuinely new situations better.
 
@@ -269,7 +273,7 @@ const ANSWERS = {
   },
   voicePayg: {
     message: "- **Pay as you go**: top up voice AI minutes at **₹8.90/min**, minimum **320 minutes = ₹2,848**, on any plan.\n" +
-      "- Top up **₹7,000 or more** (827+ minutes) for **₹8.47/min** and **+2% bonus minutes**.\n" +
+      "- Top up **₹7,000 or more** (830+ minutes) for **₹8.47/min** and **+2% bonus minutes**. Minutes go in steps of 10 (320, 330, 340, …).\n" +
       "- Example: 500 minutes = 500 × ₹8.90 = **₹4,450 + GST**.\n" +
       "- Voice cloning, SIP trunking, WhatsApp and voicemail detection need a monthly plan (from ₹2,799/month).\n" +
       "- Plus 18% GST at checkout and a one-time setup fee of **₹1,999**.",
@@ -316,6 +320,45 @@ const ANSWERS = {
       "- **Speed**: live the same day instead of 2–6 weeks of training; works 24/7 all year.\n" +
       "- **Scale**: up to 20 calls at once in campaigns, with notes written for every call.\n" +
       "- A person still handles genuinely new situations better, so the agent takes the repetitive calls and your team handles the rest.",
+    links: links("voice", "contact")
+  },
+  voiceMessageRates: {
+    message: "- **Chatbot: ₹0.84 per message** and **WhatsApp: ₹0.84 per outgoing message** on Starter, Pro and Growth (agent replies and campaign messages alike).\n" +
+      "- **Incoming messages are free.** Marketing, utility and free-text messages all cost the same ₹0.84.\n" +
+      "- **WhatsApp broadcasts per month**: Starter none · **Pro 2,000** · **Growth 10,000**.\n" +
+      "- Meta bills its own WhatsApp template charges to your WhatsApp Business account separately. No GST per message: 18% GST is on your plan or top-up invoice.",
+    links: links("voice", "contact")
+  },
+  voiceSupport: {
+    message: "- **Starter & Pro**: email support, **24-hour response**.\n" +
+      "- **Growth**: email, **Slack and WhatsApp** support, **12-hour response**.\n" +
+      "- Need help choosing? Book a free demo call and we will walk you through it.",
+    links: links("voice", "contact")
+  },
+  voiceFreeTrial: {
+    message: "- There is **no free trial**, but we give you a **free demo call**: tell us who to call and what the agent should say, and we show you how your voice agent handles it before you pay.\n" +
+      "- Then pick a monthly plan (from **₹2,799/month**) or pay as you go from **₹2,848** (320 minutes). One-time setup ₹1,999; + 18% GST.",
+    links: links("voice", "contact")
+  },
+  voiceChangePlan: {
+    message: "- **Yes**, upgrade or downgrade between **Starter, Pro and Growth** any time, or move to pay as you go. Changes are prorated and take effect immediately.\n" +
+      "- Ran out of included minutes? Calls continue from your top-up balance (**₹8.90/min**, ₹8.47/min + 2% bonus on ₹7,000+), or move up a plan for a lower rate (Pro ₹7.00/min, Growth ₹6.44/min).",
+    links: links("voice", "contact")
+  },
+  voiceEnterprise: {
+    message: "- Our plans are **Starter, Pro and Growth** (no separate Enterprise plan).\n" +
+      "- Calling more than Growth's 3,571 minutes a month? **Contact us for custom volume pricing** on request.",
+    links: links("voice", "contact")
+  },
+  voicePromptLimit: {
+    message: "- For the best call quality, keep an agent prompt under about **10,000–13,000 characters (~3,500 tokens)**.\n" +
+      "- We write and tune the agent script with you during setup.",
+    links: links("voice", "contact")
+  },
+  voiceExtraFees: {
+    message: "- **One-time setup fee ₹1,999** and **18% GST** on every plan and top-up.\n" +
+      "- Chatbot and WhatsApp messages: **₹0.84 each** (incoming free). Meta bills its own WhatsApp template charges separately.\n" +
+      "- Anything extra, such as more phone numbers or more calls at the same time, is quoted before you approve it.",
     links: links("voice", "contact")
   },
   monthlyFee: {
@@ -470,7 +513,8 @@ const ANSWERS = {
   }
 };
 
-for (const k of ["voice", "voicePricing", "voiceSetup", "voiceMonthly", "voicePayg", "voiceGst", "voiceDifferences", "voiceStarter", "voicePro", "voiceGrowth", "voiceVsTelecaller", "monthlyFee"]) {
+for (const k of ["voice", "voicePricing", "voiceSetup", "voiceMonthly", "voicePayg", "voiceGst", "voiceDifferences", "voiceStarter", "voicePro", "voiceGrowth", "voiceVsTelecaller", "monthlyFee",
+  "voiceMessageRates", "voiceSupport", "voiceFreeTrial", "voiceChangePlan", "voiceEnterprise", "voicePromptLimit", "voiceExtraFees"]) {
   Object.defineProperty(ANSWERS[k], "voiceVerified", { value: true, enumerable: false });
 }
 
@@ -486,10 +530,11 @@ const VOICE_PLANS = [
   { name: "Pro", price: 6999, minutes: 1000 },
   { name: "Growth", price: 22999, minutes: 3571 },
 ];
-const PAYG = { min: 320, base: 8.9, discount: 8.47, threshold: 7000, bonusPct: 2 };
+const PAYG = { min: 320, step: 10, base: 8.9, discount: 8.47, threshold: 7000, bonusPct: 2 };
 const inr = (n) => "₹" + Math.round(n).toLocaleString("en-IN");
 function paygQuote(rawMinutes) {
-  const minutes = Math.max(PAYG.min, Math.round(rawMinutes));
+  // Minutes are sold in steps of 10 (320, 330, …), like the website slider.
+  const minutes = Math.max(PAYG.min, Math.round((Number.isFinite(rawMinutes) ? rawMinutes : PAYG.min) / PAYG.step) * PAYG.step);
   const discounted = minutes * PAYG.discount >= PAYG.threshold;
   const rate = discounted ? PAYG.discount : PAYG.base;
   const amount = Math.round(minutes * rate);
@@ -504,9 +549,10 @@ function voiceMinutesAnswer(t) {
   const q = paygQuote(asked);
   const lines = [];
   if (asked < PAYG.min) lines.push("- Minimum pay-as-you-go top-up is **" + PAYG.min + " minutes = " + inr(PAYG.min * PAYG.base) + "** + GST.");
+  else if (asked !== q.minutes) lines.push("- Minutes are bought in steps of 10, so " + asked.toLocaleString("en-IN") + " rounds to **" + q.minutes.toLocaleString("en-IN") + " minutes**.");
   lines.push("- **Pay as you go, " + q.minutes.toLocaleString("en-IN") + " minutes**: " + q.minutes.toLocaleString("en-IN") + " × ₹" + q.rate.toFixed(2) + " = **" + inr(q.amount) + " + 18% GST** (" + inr(q.gst) + ") = " + inr(q.amount + q.gst) + "." +
     (q.discounted ? " Includes **+" + q.bonus + " bonus minutes** (2%), so you get " + (q.minutes + q.bonus).toLocaleString("en-IN") + " minutes." : ""));
-  if (!q.discounted) lines.push("- Top up ₹7,000+ (827+ minutes) for ₹8.47/min and +2% bonus minutes.");
+  if (!q.discounted) lines.push("- Top up ₹7,000+ (830+ minutes) for ₹8.47/min and +2% bonus minutes.");
   const plan = VOICE_PLANS.find((p) => p.minutes >= asked);
   if (plan) lines.push("- On a monthly plan: **" + plan.name + " " + inr(plan.price) + "/month** includes " + plan.minutes.toLocaleString("en-IN") + " mins" + (plan.price < q.amount ? " (cheaper than pay as you go for this many minutes)" : "") + ", + GST.");
   else lines.push("- On a monthly plan: **Growth ₹22,999/month** includes 3,571 mins; top up the rest at the pay-as-you-go rate.");
@@ -538,6 +584,17 @@ function matchIntent(raw) {
 
   const price = /\b(price|pricing|prices|cost|costs|charges?|rate|rates|how much|fee|fees|budget|rs\.?|₹|entha|enta|packages?)\b/i.test(t);
 
+  // Voice plan usage, support and billing FAQs (comparison table facts).
+  const msgWord = /\b(messages?|msgs?|per message|broadcasts?|templates?|marketing|utility)\b/.test(t);
+  if ((/\b(whatsapp|chat ?bots?|chatbot)\b/.test(t) && msgWord && (price || /\b(gst|billed|billing|free|incoming|outgoing|limit|limits|enni|how many)\b/.test(t))) || /\bbroadcasts?\b/.test(t)) return ANSWERS.voiceMessageRates;
+  if (/\b(response time|support channels?|sla|slack)\b/.test(t) || (/\bsupport\b/.test(t) && (isVoiceQuestion(t) || /\b(response|reply|kind of|what support|emi support)\b/.test(t)))) return ANSWERS.voiceSupport;
+  if (/\bprompt (limit|length|size)\b|\bprompt\b.{0,20}\b(limit|characters?|tokens?)\b/.test(t)) return ANSWERS.voicePromptLimit;
+  if (isVoiceQuestion(t) || /\b(starter|pro|growth) plan\b/.test(t)) {
+    if (/\b(free trial|trial|demo)\b/.test(t)) return ANSWERS.voiceFreeTrial;
+    if (/\b(enterprise|volume discount|bulk discount|discounts?|custom pricing)\b/.test(t)) return ANSWERS.voiceEnterprise;
+    if (/\b(change|upgrade|downgrade|switch)\b.{0,15}\bplans?\b|\bplan (change|marchu\w*)\b|\b(exceed|limit|limits|run out|runs out|aipothe|ayipothe)\b/.test(t)) return ANSWERS.voiceChangePlan;
+    if (/\b(additional|extra|hidden|other) (fees?|charges?|costs?)\b/.test(t)) return ANSWERS.voiceExtraFees;
+  }
   const minutesQuote = voiceMinutesAnswer(t);
   if (minutesQuote && (price || isVoiceQuestion(t) || /\b(ki|ku|kosam|for)\b/.test(t))) return minutesQuote;
   if (/\b(pay[- ]?as[- ]?you[- ]?go|payg|top[- ]?ups?|recharge)\b/.test(t)) return ANSWERS.voicePayg;
