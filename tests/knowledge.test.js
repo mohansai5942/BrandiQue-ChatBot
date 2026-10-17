@@ -12,10 +12,28 @@ test("voice plan prices: Starter ₹5, Growth ₹8, Premium ₹11 per minute", (
   assert.match(ask("what plans do you have for voice calling agents?"), /₹5\/min[\s\S]*₹8\/min[\s\S]*₹11\/min/);
 });
 
-test("plan differences: same features, only voice quality and rate", () => {
+test("plan differences: tier taglines and features", () => {
   assert.equal(matchIntent("starter vs growth vs premium difference"), ANSWERS.voiceDifferences);
   assert.equal(matchIntent("voice plans lo difference enti?"), ANSWERS.voiceDifferences);
-  assert.match(ANSWERS.voiceDifferences.message, /only in \*\*voice quality\*\* and \*\*per-minute rate\*\*/);
+  const d = ANSWERS.voiceDifferences.message;
+  assert.match(d, /Native Multilingual · Value Voices · Low Latency · Budget bulk calling/);
+  assert.match(d, /Native Multilingual · Standard Voices · Low Latency · The All-Rounder/);
+  assert.match(d, /Native Multilingual · Premium Voices · Ultra-low Latency · Custom integrations/);
+  assert.match(ask("Starter price entha?"), /Budget-friendly\. Mostly used for bulk calling campaigns\./);
+  assert.match(ask("Growth price entha?"), /The All-Rounder\. High realism for everyday customer interactions and support\./);
+  assert.match(ask("Premium price entha?"), /Curated native speakers\. The most real-like voices from our exclusive library\./);
+});
+
+test("voice agents: no monthly / agent fee, only per-minute billing", () => {
+  for (const q of ["voice agents monthly entha?", "voice agent monthly fee unda?", "calling agent per agent fee entha?", "voice ai subscription undha monthly"]) {
+    assert.equal(matchIntent(q), ANSWERS.voiceNoMonthly, q);
+  }
+  assert.match(ANSWERS.voiceNoMonthly.message, /No monthly fee/);
+  assert.match(ANSWERS.voiceNoMonthly.message, /₹5\/min[\s\S]*₹8\/min[\s\S]*₹11\/min/);
+  assert.match(ask("voice agents price entha?"), /No monthly fee/);
+  for (const [k, a] of Object.entries(ANSWERS)) {
+    assert.doesNotMatch(a.message, /2,099|2099|30 days|per agent \/|₹500 calling credit/, k);
+  }
 });
 
 test("voice overview and no stale prices or unsupported claims", () => {

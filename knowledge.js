@@ -91,14 +91,12 @@ COMPANY
 4) VOICE CALLING AI AGENTS (/services/voice-ai-agents)
 - AI voice agents that phone new leads within seconds (instant lead calling) and run bulk reminder / renewal / follow-up call campaigns (up to 20 calls at a time). Each agent works in one mode: instant lead calling or bulk campaigns.
 - Native Telugu, switching to English mid-call. (Hindi and inbound call answering are NOT offered; never claim them.)
-- Every agent includes: live the same day, a dedicated DLT-registered +91 calling line, ₹500 calling credit on every hire or renewal, automatic transcripts and call summaries, CRM / webhook / Pabbly Connect integrations, Google Calendar booking mid-call, WhatsApp confirmations and follow-ups, 99.9% uptime SLA, no setup fee and no lock-in.
-- Pricing: flat **₹2,099 per agent every 30 days** + calls per connected minute by plan (voice tier):
-  **Voice Starter ₹5/min** (budget-friendly voice, covers most day-to-day and high-volume reminder calling),
-  **Voice Growth ₹8/min** (great everyday quality, a step up in naturalness),
-  **Voice Premium ₹11/min** (most lifelike voice, for hot new leads and first impressions).
-- The three plans have EXACTLY the same features; only the voice quality and per-minute rate differ. The tier can be changed per agent any time.
+- Pricing: ONLY per connected minute. There is NO monthly fee, NO per-agent fee, NO subscription and NO setup fee. Never mention any monthly or agent fee.
+  **Starter ₹5/min**: "Budget-friendly. Mostly used for bulk calling campaigns." Features: Native Multilingual, Value Voices, Low Latency, Budget bulk calling.
+  **Growth ₹8/min** (most popular): "The All-Rounder. High realism for everyday customer interactions and support." Features: Native Multilingual, Standard Voices, Low Latency, The All-Rounder.
+  **Premium ₹11/min**: "Curated native speakers. The most real-like voices from our exclusive library." Features: Native Multilingual, Premium Voices, Ultra-low Latency, Custom integrations.
 - Billing: per second, rounded up to the nearest 30 seconds, from prepaid credit. Ring time and unanswered calls are not billed. If credit runs out mid-call the agent ends with a short goodbye.
-- Versus a telecaller (~₹18,000/month, ₹5,000–₹20,000 recruitment, 2–6 weeks training, one shift, one call at a time, high attrition): the agent is ₹2,099/30 days + minutes, same-day, 24/7, up to 20 calls at once, notes on every call. A person still handles genuinely new situations better.
+- Versus a telecaller (~₹18,000/month, ₹5,000–₹20,000 recruitment, 2–6 weeks training, one shift, one call at a time, high attrition): the agent has no monthly fee, you pay only per minute from ₹5/min; same-day, 24/7, up to 20 calls at once, notes on every call. A person still handles genuinely new situations better.
 
 MONTHLY MEMBERSHIPS (/pricing), 3-month minimum then month to month
 - Web Care **₹1,999**, Web Growth **₹3,999**
@@ -194,7 +192,7 @@ const ANSWERS = {
     message: "- **Web Development** from **₹9,000**: business, e-commerce and portfolio websites built to bring enquiries.\n" +
       "- **AI Agents & Automations** from **₹12,000**: WhatsApp and website chatbots, lead capture, automatic follow-ups, n8n workflows.\n" +
       "- **Graphic Design** from **₹4,500**: logos, brand kits, social media and ad creatives.\n" +
-      "- **Voice Calling AI Agents**: **₹2,099 per agent / 30 days** + calls from **₹5/min**: AI agents that call your leads in Telugu and English.\n" +
+      "- **Voice Calling AI Agents** from **₹5/min**, no monthly fee: AI agents that call your leads in Telugu and English.\n" +
       "- Monthly memberships from **₹1,999** keep everything running.",
     links: links("web", "ai", "voice")
   },
@@ -243,46 +241,51 @@ const ANSWERS = {
     message: "- **Voice Calling AI Agents**: AI agents that call your new leads within seconds and run bulk reminder and follow-up campaigns (up to 20 calls at a time).\n" +
       "- Speaks native **Telugu**, switching to **English** mid-call.\n" +
       "- Automatic transcripts and call summaries, Google Calendar booking, WhatsApp follow-ups and CRM / webhook / Pabbly Connect integrations.\n" +
-      "- **₹2,099 per agent / 30 days** + calls: **Starter ₹5/min**, **Growth ₹8/min**, **Premium ₹11/min**.",
+      "- Pay only per connected minute, no monthly fee: **Starter ₹5/min**, **Growth ₹8/min**, **Premium ₹11/min**.",
     links: links("voice", "contact")
   },
   voicePricing: {
-    message: "- **Voice Starter ₹5/min**: budget-friendly voice for day-to-day and high-volume reminder calls.\n" +
-      "- **Voice Growth ₹8/min**: great everyday quality, a step up in naturalness.\n" +
-      "- **Voice Premium ₹11/min**: our most lifelike voice, for hot new leads and first impressions.\n" +
-      "- Plus a flat **₹2,099 per agent / 30 days** (dedicated +91 line and **₹500 calling credit** included).\n" +
-      "- All three plans have the same features; only the voice and per-minute rate change. Unanswered calls are free.",
+    message: "- **Starter ₹5/min**: Budget-friendly. Mostly used for bulk calling campaigns.\n" +
+      "- **Growth ₹8/min** (most popular): The All-Rounder. High realism for everyday customer interactions and support.\n" +
+      "- **Premium ₹11/min**: Curated native speakers. The most real-like voices from our exclusive library.\n" +
+      "- **No monthly fee, no setup fee**: you pay only per connected minute. Unanswered calls are free.",
+    links: links("voice", "contact")
+  },
+  voiceNoMonthly: {
+    message: "- **No monthly fee** for Voice Calling AI Agents, and no setup or per-agent fee.\n" +
+      "- You pay **only per connected minute**: **Starter ₹5/min**, **Growth ₹8/min**, **Premium ₹11/min**.\n" +
+      "- Ring time and unanswered calls are not billed.",
     links: links("voice", "contact")
   },
   voiceDifferences: {
-    message: "- The plans differ only in **voice quality** and **per-minute rate**; features are the same on all three.\n" +
-      "- **Starter ₹5/min**: budget-friendly voice. **Growth ₹8/min**: a step up in naturalness. **Premium ₹11/min**: most lifelike.\n" +
-      "- Every plan: same-day setup, +91 line, ₹500 credit, bulk calls up to 20 at a time, Telugu + English, transcripts and summaries, Calendar, WhatsApp and CRM integrations, 99.9% uptime.\n" +
-      "- You can change an agent's plan any time.",
+    message: "- **Starter ₹5/min**: Native Multilingual · Value Voices · Low Latency · Budget bulk calling. Budget-friendly, mostly used for bulk calling campaigns.\n" +
+      "- **Growth ₹8/min**: Native Multilingual · Standard Voices · Low Latency · The All-Rounder. High realism for everyday customer interactions and support.\n" +
+      "- **Premium ₹11/min**: Native Multilingual · Premium Voices · Ultra-low Latency · Custom integrations. Curated native speakers, the most real-like voices.\n" +
+      "- No monthly fee on any plan; you pay only per connected minute.",
     links: links("voice", "contact")
   },
   voiceStarter: {
-    message: "- **Voice Starter: ₹5 per connected minute**, plus **₹2,099 per agent / 30 days**.\n" +
-      "- Budget-friendly voice that covers most day-to-day calling, ideal for high-volume reminder campaigns.\n" +
-      "- Same features as every plan: +91 line, ₹500 credit, bulk calls up to 20 at a time, Telugu + English, transcripts, Calendar and WhatsApp.\n" +
+    message: "- **Voice Starter: ₹5 per connected minute**, no monthly fee.\n" +
+      "- Budget-friendly. Mostly used for bulk calling campaigns.\n" +
+      "- Native Multilingual · Value Voices · Low Latency · Budget bulk calling.\n" +
       "- (Looking for the website **Website Starter** package instead? That is **₹9,000** one-time.)",
     links: links("voice", "contact")
   },
   voiceGrowth: {
-    message: "- **Voice Growth: ₹8 per connected minute**, plus **₹2,099 per agent / 30 days**.\n" +
-      "- Great everyday quality, a step up in naturalness from Starter.\n" +
-      "- Same features as every plan: +91 line, ₹500 credit, bulk calls up to 20 at a time, Telugu + English, transcripts, Calendar and WhatsApp.\n" +
+    message: "- **Voice Growth: ₹8 per connected minute**, no monthly fee. Our most popular voice plan.\n" +
+      "- The All-Rounder. High realism for everyday customer interactions and support.\n" +
+      "- Native Multilingual · Standard Voices · Low Latency · The All-Rounder.\n" +
       "- (Looking for the **Growth** monthly bundle of website, AI and design care instead? That is **₹6,999/month**.)",
     links: links("voice", "contact")
   },
   voicePremium: {
-    message: "- **Voice Premium: ₹11 per connected minute**, plus **₹2,099 per agent / 30 days**.\n" +
-      "- Our most lifelike voice, for calls where the first impression matters most, like hot new leads.\n" +
-      "- Same features as every plan: +91 line, ₹500 credit, bulk calls up to 20 at a time, Telugu + English, transcripts, Calendar and WhatsApp.",
+    message: "- **Voice Premium: ₹11 per connected minute**, no monthly fee.\n" +
+      "- Curated native speakers. The most real-like voices from our exclusive library.\n" +
+      "- Native Multilingual · Premium Voices · Ultra-low Latency · Custom integrations.",
     links: links("voice", "contact")
   },
   voiceVsTelecaller: {
-    message: "- **Cost**: **₹2,099 per 30 days** + call minutes, versus around ₹18,000 a month plus ₹5,000–₹20,000 recruitment for a telecaller.\n" +
+    message: "- **Cost**: no monthly fee, pay only per minute from **₹5/min**, versus around ₹18,000 a month plus ₹5,000–₹20,000 recruitment for a telecaller.\n" +
       "- **Speed**: live the same day instead of 2–6 weeks of training; works 24/7 all year.\n" +
       "- **Scale**: up to 20 calls at once in campaigns, with notes written for every call.\n" +
       "- A person still handles genuinely new situations better, so the agent takes the repetitive calls and your team handles the rest.",
@@ -299,7 +302,7 @@ const ANSWERS = {
     message: "- **Web Development**: Starter **₹9,000**, Business **₹15,000**, E-commerce from **₹25,000**.\n" +
       "- **AI Agents & Automations**: Lead Automation **₹12,000**, AI Chatbot from **₹15,000**, Custom Agents from **₹20,000**.\n" +
       "- **Graphic Design**: Starter Pack **₹4,500**, Campaign Pack **₹7,500**, Brand Kit from **₹8,000**.\n" +
-      "- **Voice Calling AI Agents**: **₹2,099 per agent / 30 days** + calls **₹5** (Starter), **₹8** (Growth) or **₹11** (Premium) a minute.\n" +
+      "- **Voice Calling AI Agents**: no monthly fee, only per connected minute: **₹5** (Starter), **₹8** (Growth) or **₹11** (Premium).\n" +
       "- Monthly plans from **₹1,999**. Prices are starting points; you get a fixed written quote.",
     links: links("pricing", "contact")
   },
@@ -468,6 +471,7 @@ function matchIntent(raw) {
   const voicePlan = voicePlanAnswer(t);
   if (voicePlan) return voicePlan;
   if (isVoiceQuestion(t)) {
+    if (/\b(monthly|month|months|per month|nelaki|nelala|subscription|renewal|renew|agent fee|per agent|30 days)\b/.test(t)) return ANSWERS.voiceNoMonthly;
     if (/\b(telecaller|tele[- ]?caller|human|staff|employee|vs|versus|better than)\b/.test(t) && !/\bplans?\b/.test(t)) return ANSWERS.voiceVsTelecaller;
     if (/\b(differen\w*|compare|comparison|tedha|teda|which plan)\b/.test(t)) return ANSWERS.voiceDifferences;
     if (price || /\b(plans?|tiers?|per minute|minutes?)\b/.test(t)) return ANSWERS.voicePricing;
