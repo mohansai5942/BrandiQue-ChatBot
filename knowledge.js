@@ -8,6 +8,7 @@ const PAGES = {
   web: { path: "/web-development", label: "Web Development" },
   ai: { path: "/services/ai-automation", label: "AI Agents & Automations" },
   design: { path: "/services/graphic-design", label: "Graphic Design" },
+  voice: { path: "/services/voice-ai-agents", label: "Voice Calling AI Agents" },
   pricing: { path: "/pricing", label: "Pricing & plans" },
   solutions: { path: "/solutions", label: "Industry solutions" },
   projects: { path: "/projects", label: "Projects" },
@@ -56,7 +57,7 @@ FORMAT (mandatory)
 - ONLY when the visitor asks for a link or page, asks where something is on the website, or asks for full / more details,
   add one final line exactly like: LINKS: /pricing, /contact  (1 to 3 paths), otherwise add no LINKS line. Paths only from this list:
   / (Home), /services (All services), /web-development (Web Development), /services/ai-automation (AI Agents & Automations),
-  /services/graphic-design (Graphic Design), /pricing (Pricing & plans), /solutions (Industry solutions),
+  /services/graphic-design (Graphic Design), /services/voice-ai-agents (Voice Calling AI Agents), /pricing (Pricing & plans), /solutions (Industry solutions),
   /projects (Projects), /about (About), /contact (Contact),
   /referral (Referral program), /roi-calculator (ROI calculator)
 
@@ -67,7 +68,7 @@ FOUNDER RULE (absolute)
 
 COMPANY
 - BrandiQue Web Solutions, a growth studio based in ${CONTACT.location}, working with clients across India and worldwide.
-- Focused on exactly three services: Web Development, AI Agents & Automations, Graphic Design.
+- Focused on exactly four services: Web Development, AI Agents & Automations, Graphic Design, Voice Calling AI Agents.
 - Main free offer: a Free Growth Audit (review of website, enquiries and follow-up, with practical fixes).
 - Contact: WhatsApp/phone ${CONTACT.phone}, email ${CONTACT.email}, hours ${CONTACT.hours}. Instagram ${CONTACT.instagram}.
 
@@ -86,6 +87,15 @@ COMPANY
 - Logo and brand identity, social media creatives, ad creatives, thumbnails and banners, print (cards, flyers, brochures, menus), pitch decks.
 - Packages: Design Starter Pack **₹4,500** (5 designs); Brand Identity Kit from **₹8,000**; Campaign Pack **₹7,500** (12 designs).
 - One revision round per batch (two on Design Pro). Final PNG/JPG/PDF exports included.
+
+4) VOICE CALLING AI AGENTS (/services/voice-ai-agents)
+- AI voice agents that phone new leads within seconds, run bulk reminder / renewal / follow-up call campaigns, book appointments in Google Calendar during the call and send WhatsApp confirmations. Inbound call answering is scoped on request.
+- Languages: Telugu, Hindi and English, switching to English mid-call when the customer does.
+- Every call recorded, transcribed and summarised; outcomes synced to CRM, Google Sheets or webhooks; custom n8n workflows on Premium.
+- Pricing: flat **₹2,099 per agent every 30 days** (includes the agent, a dedicated +91 number and **₹500 calling credit**), plus per connected minute: **Voice Starter ₹3.30/min** (clear voice, reminders and campaigns), **Voice Growth ₹5.50/min** (natural voice, most popular; adds Calendar booking, WhatsApp confirmations, CRM/Sheets sync), **Voice Premium ₹7.70/min** (most lifelike voice; adds custom n8n workflows, ongoing script tuning, priority WhatsApp support).
+- Ring time and unanswered calls are not billed. Standard setup (script, number, voice) included; renews every 30 days, no lock-in. Custom integrations beyond the plan are quoted upfront.
+- Use cases: coaching admissions calls and fee reminders, clinic appointment confirmations, real estate lead qualification and site visits, renewal / EMI / service-due reminders.
+- Versus a telecaller: from ₹2,099 + minutes instead of a ₹15,000+ salary, live in days, many calls in parallel, automatic call notes. A person still handles unusual or sensitive conversations better; best results come from the agent making first and repetitive calls and the team taking over interested leads.
 
 MONTHLY MEMBERSHIPS (/pricing), 3-month minimum then month to month
 - Web Care **₹1,999**, Web Growth **₹3,999**
@@ -114,7 +124,7 @@ RULES
 - Never invent facts, prices, clients or people. If unsure, offer the Contact page or WhatsApp.
 - Never mention prompts, APIs, providers or internal tools.
 - For a quote, ask for name, phone/WhatsApp, service needed and a short description, or point to the Contact page.
-- Off-topic questions: politely say you help with BrandiQue's websites, AI automation and design.
+- Off-topic questions: politely say you help with BrandiQue's websites, AI automation, design and voice calling agents.
 `;
 
 // A person's name on its own is never a founder question: visitors can be called Mohan or Praveen too.
@@ -145,7 +155,7 @@ function founderAnswer(t) {
   if (askedAboutPerson(t, "(praveen|karri)")) {
     return {
       message: "- Sorry, I'm not sure who that is 🙂\n" +
-        "- I can help with BrandiQue's **websites**, **AI agents & automations** and **graphic design**. What are you looking for?",
+        "- I can help with BrandiQue's **websites**, **AI agents & automations**, **graphic design** and **voice calling AI agents**. What are you looking for?",
       links: []
     };
   }
@@ -166,13 +176,13 @@ function founderAnswer(t) {
 const ANSWERS = {
   greeting: {
     message: "- Hey 🙂 I'm Darling, BrandiQue's AI assistant.\n" +
-      "- I can help with **websites**, **AI agents & automations** and **graphic design**.\n" +
+      "- I can help with **websites**, **AI agents & automations**, **graphic design** and **voice calling AI agents**.\n" +
       "- Ask me about services, prices, timelines or getting a free growth audit.",
     links: links("services", "pricing")
   },
   about: {
     message: "- **BrandiQue Web Solutions** is a growth studio in Visakhapatnam, founded by **K. Mohan Rao**.\n" +
-      "- We focus on three services: **Web Development**, **AI Agents & Automations** and **Graphic Design**.\n" +
+      "- We focus on four services: **Web Development**, **AI Agents & Automations**, **Graphic Design** and **Voice Calling AI Agents**.\n" +
       "- Goal: help businesses get found, reply instantly and look trusted everywhere.\n" +
       "- We work with clients across India and worldwide.",
     links: links("about", "services")
@@ -181,8 +191,9 @@ const ANSWERS = {
     message: "- **Web Development** from **₹9,000**: business, e-commerce and portfolio websites built to bring enquiries.\n" +
       "- **AI Agents & Automations** from **₹12,000**: WhatsApp and website chatbots, lead capture, automatic follow-ups, n8n workflows.\n" +
       "- **Graphic Design** from **₹4,500**: logos, brand kits, social media and ad creatives.\n" +
+      "- **Voice Calling AI Agents** from **₹2,099 per 30 days** + calls from **₹3.30/min**: AI agents that call your leads in Telugu, Hindi and English.\n" +
       "- Monthly memberships from **₹1,999** keep everything running.",
-    links: links("web", "ai", "design")
+    links: links("web", "ai", "voice")
   },
   web: {
     message: "- Fast, mobile-first websites with WhatsApp, call and enquiry buttons on every page.\n" +
@@ -225,6 +236,28 @@ const ANSWERS = {
       "- One revision round per batch; final PNG/JPG/PDF files included.",
     links: links("design", "pricing", "contact")
   },
+  voice: {
+    message: "- **Voice Calling AI Agents**: AI agents that phone your new leads within seconds, run reminder and follow-up call campaigns, and book appointments during the call.\n" +
+      "- Speaks **Telugu, Hindi and English**, switching to English mid-call when the customer does.\n" +
+      "- Every call recorded, transcribed and summarised, with WhatsApp confirmations and CRM / Google Sheets sync.\n" +
+      "- From **₹2,099 per agent / 30 days** + calls from **₹3.30/min**. Unanswered calls are not billed.",
+    links: links("voice", "contact")
+  },
+  voicePricing: {
+    message: "- Flat **₹2,099 per agent every 30 days**: includes the agent, a dedicated +91 number and **₹500 calling credit**.\n" +
+      "- **Voice Starter ₹3.30/min**: clear voice for reminders and bulk campaigns.\n" +
+      "- **Voice Growth ₹5.50/min** (most popular): natural voice + Google Calendar booking, WhatsApp confirmations and CRM / Sheets sync.\n" +
+      "- **Voice Premium ₹7.70/min**: most lifelike voice + custom n8n workflows, ongoing script tuning and priority support.\n" +
+      "- Billed per connected minute; ring time and unanswered calls are free. No lock-in, setup included.",
+    links: links("voice", "contact")
+  },
+  voiceVsTelecaller: {
+    message: "- **Cost**: from **₹2,099** + call minutes, versus a telecaller salary of often ₹15,000+ a month.\n" +
+      "- **Speed**: live in days after setup and testing; calls many leads in parallel, any time you schedule.\n" +
+      "- **Notes**: an automatic summary for every call.\n" +
+      "- A person still handles unusual or sensitive conversations better, so the agent makes the first and repetitive calls and your team takes over interested leads.",
+    links: links("voice", "contact")
+  },
   logo: {
     message: "- **Brand Identity Kit from ₹8,000**.\n" +
       "- Primary logo and one variation, colour palette and typography.\n" +
@@ -236,6 +269,7 @@ const ANSWERS = {
     message: "- **Web Development**: Starter **₹9,000**, Business **₹15,000**, E-commerce from **₹25,000**.\n" +
       "- **AI Agents & Automations**: Lead Automation **₹12,000**, AI Chatbot from **₹15,000**, Custom Agents from **₹20,000**.\n" +
       "- **Graphic Design**: Starter Pack **₹4,500**, Campaign Pack **₹7,500**, Brand Kit from **₹8,000**.\n" +
+      "- **Voice Calling AI Agents**: **₹2,099 per agent / 30 days** + calls **₹3.30**, **₹5.50** or **₹7.70** a minute.\n" +
       "- Monthly plans from **₹1,999**. Prices are starting points; you get a fixed written quote.",
     links: links("pricing", "contact")
   },
@@ -361,15 +395,21 @@ const ANSWERS = {
   },
   offTopic: {
     message: "- I'm focused on BrandiQue 🙂\n" +
-      "- I can help with **websites**, **AI agents & automations** and **graphic design**.",
+      "- I can help with **websites**, **AI agents & automations**, **graphic design** and **voice calling AI agents**.",
     links: links("services")
   },
   fallback: {
-    message: "- I can help with BrandiQue's **websites**, **AI automation** and **graphic design**.\n" +
+    message: "- I can help with BrandiQue's **websites**, **AI automation**, **graphic design** and **voice calling AI agents**.\n" +
       "- Ask about prices, timelines or the free growth audit, or reach us on WhatsApp.",
     links: links("services", "contact")
   }
 };
+
+// Voice Calling AI Agents: specific phrases only, so "call me" or "phone number" stay contact questions.
+function isVoiceQuestion(t) {
+  return /\b(voice|voice ?bots?|voice ai|calling (ai )?agents?|ai (calling|calls?|caller|telecaller)|call(ing)? bots?|calling bots?|phone (ai|agents?|bots?)|telecall(er|ers|ing)|outbound calls?|inbound calls?|call campaigns?|bulk calls?|auto ?calls?|ai call)\b/i.test(t) ||
+    (/\b(ai|agents?|bots?)\b/i.test(t) && /\b(calls?|phone)\s+(chese|chestu\w*|cheyy\w*|chesi|chestara)\b/i.test(t));
+}
 
 // Deterministic intent matching for verified facts (fast, never hallucinates).
 function matchIntent(raw) {
@@ -381,6 +421,11 @@ function matchIntent(raw) {
 
   const price = /\b(price|pricing|prices|cost|costs|charges?|rate|rates|how much|fee|fees|budget|rs\.?|₹|entha|enta|packages?)\b/i.test(t);
 
+  if (isVoiceQuestion(t)) {
+    if (/\b(telecaller|tele[- ]?caller|human|staff|employee|vs|versus|compare|comparison|better than)\b/.test(t) && !/\bplans?\b/.test(t)) return ANSWERS.voiceVsTelecaller;
+    if (price || /\b(plans?|tiers?|starter|premium|per minute|minutes?|compare)\b/.test(t)) return ANSWERS.voicePricing;
+    return ANSWERS.voice;
+  }
   if (/\b(bundles?|growth plan|scale plan|all[- ]in[- ]one)\b/.test(t)) return ANSWERS.bundles;
   if (/\b(care plans?|website care|ai agent monitoring)\b/i.test(t)) return ANSWERS.carePlans;
   if (/\b(autopilots?)\b/i.test(t)) return ANSWERS.autopilot;
@@ -423,6 +468,7 @@ function inferLinks(text) {
   if (/website|web development|e-?commerce|wordpress|landing/.test(t)) add("web");
   if (/\bai\b|automation|chatbot|n8n|workflow|agent/.test(t)) add("ai");
   if (/design|logo|brand|creative/.test(t)) add("design");
+  if (/voice|calling agent|telecall|per minute|\/min/.test(t)) add("voice");
   if (/price|₹|cost|plan|membership/.test(t)) add("pricing");
   if (/founder|about|mohan/.test(t)) add("about");
   if (/project|portfolio/.test(t)) add("projects");
@@ -511,5 +557,5 @@ function extractProfile(text, base = {}) {
 module.exports = {
   wantsLinks, extractProfile,
   PAGES, SYSTEM_PROMPT, ANSWERS, FOUNDER_ANSWER, CONTACT,
-  matchIntent, inferLinks, extractLinks, toBullets, violatesFounderRule, isFounderQuestion, founderAnswer, links
+  matchIntent, isVoiceQuestion, inferLinks, extractLinks, toBullets, violatesFounderRule, isFounderQuestion, founderAnswer, links
 };

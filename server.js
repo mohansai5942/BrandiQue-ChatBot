@@ -86,7 +86,7 @@ const apiHourlyLimiter = rateLimit({
 
 const {
   SYSTEM_PROMPT, ANSWERS, PAGES, matchIntent, inferLinks, extractLinks, toBullets,
-  violatesFounderRule, founderAnswer, isFounderQuestion, wantsLinks, extractProfile
+  violatesFounderRule, founderAnswer, isFounderQuestion, wantsLinks, extractProfile, isVoiceQuestion
 } = require("./knowledge");
 
 const BUSINESS_FACT_PATTERNS = [/\b(price|pricing|cost|package|service|quote)\b/i];
@@ -119,9 +119,20 @@ function contextualAnswer(userText, messages, profile = {}) {
   const intro = text.match(/^(?:hi+|hello|hey|namaste|namaskaram)?[,! ]*(?:my name is|call me|naa peru|na peru|i am|i'm|im|iam|this is|nenu)\s+([a-z][a-z .'-]{1,40}?)(?:\s+(?:here|nenu))?[.!?,]*$/i);
   if (intro && profile.name) {
     const name = profile.name;
-    return { message: "Nice to meet you, **" + name + "** 🙂 How can I help: a website, AI automation or design?", links: [] };
+    return { message: "Nice to meet you, **" + name + "** 🙂 How can I help: a website, AI automation, design or a voice calling agent?", links: [] };
+  }
+  // Follow-up price question ("pricing entha?") right after a voice-agent question gets the voice plans.
+  if (/\b(price|pricing|prices|cost|charges?|rates?|how much|fees?|entha|enta|plans?|packages?)\b/i.test(text) && !matchIntentIsSpecific(text)) {
+    const prevUser = (Array.isArray(messages) ? messages : []).filter((m) => m?.role === "user").map((m) => String(m.content || "").trim()).filter((c) => c && c !== text).slice(-1)[0];
+    if (prevUser && isVoiceQuestion(prevUser.toLowerCase())) return ANSWERS.voicePricing;
   }
   return null;
+}
+
+// True when the message itself names a service, so conversation context should not override it.
+function matchIntentIsSpecific(text) {
+  const intent = matchIntent(text);
+  return Boolean(intent && intent !== ANSWERS.pricing && intent !== ANSWERS.memberships);
 }
 
 function findBuiltInBusinessAnswer(userText, messages = [], profile = {}) {

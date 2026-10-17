@@ -6,7 +6,7 @@ Premium AI customer-support chatbot for BrandiQue Web Solutions.
 
 The chatbot uses OpenRouter as its AI provider.
 
-Verified BrandiQue facts live in `knowledge.js` (mirrors brandique.in: three services, packages, memberships, industry solutions, contact). They are answered directly in bullet points with page links, without an AI request. The only founder is K. Mohan Rao. This makes those answers fast and prevents provider timeouts from breaking basic business questions.
+Verified BrandiQue facts live in `knowledge.js` (mirrors brandique.in: four services (incl. Voice Calling AI Agents), packages, memberships, industry solutions, contact). They are answered directly in bullet points with page links, without an AI request. The only founder is K. Mohan Rao. This makes those answers fast and prevents provider timeouts from breaking basic business questions.
 
 Google Sheets knowledge is optional and is queried only when an exact business fact is not already built into the chatbot.
 
