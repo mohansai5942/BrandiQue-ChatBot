@@ -13,6 +13,8 @@ const PAGES = {
   projects: { path: "/projects", label: "Projects" },
   about: { path: "/about", label: "About BrandiQue" },
   contact: { path: "/contact", label: "Contact us" },
+  referral: { path: "/referral", label: "Referral program" },
+  roi: { path: "/roi-calculator", label: "ROI calculator" },
   privacy: { path: "/privacy-policy", label: "Privacy policy" },
   terms: { path: "/terms-and-conditions", label: "Terms & conditions" },
   cookies: { path: "/cookie-policy", label: "Cookie policy" }
@@ -55,7 +57,8 @@ FORMAT (mandatory)
   add one final line exactly like: LINKS: /pricing, /contact  (1 to 3 paths), otherwise add no LINKS line. Paths only from this list:
   / (Home), /services (All services), /web-development (Web Development), /services/ai-automation (AI Agents & Automations),
   /services/graphic-design (Graphic Design), /pricing (Pricing & plans), /solutions (Industry solutions),
-  /projects (Projects), /about (About), /contact (Contact)
+  /projects (Projects), /about (About), /contact (Contact),
+  /referral (Referral program), /roi-calculator (ROI calculator)
 
 FOUNDER RULE (absolute)
 - BrandiQue Web Solutions has exactly ONE founder: K. Mohan Rao (Kutikuppala Mohan Rao). He is the founder and the person who leads the company (owner, CEO, head, everything).
@@ -286,7 +289,7 @@ const ANSWERS = {
   audit: {
     message: "- The **Free Growth Audit** reviews your website, enquiries and follow-up.\n" +
       "- You get practical fixes to win more customers, no obligation.\n" +
-      "- Request it from the Contact page or on WhatsApp.",
+      "- Request it here or on WhatsApp; we follow up with your audit and next steps.",
     links: links("contact", "services")
   },
   timeline: {
@@ -324,6 +327,38 @@ const ANSWERS = {
       "- **Web Growth (₹3,999/month)** adds ongoing on-page SEO and Google Business updates.",
     links: links("web", "pricing")
   },
+  carePlans: {
+    message: "- **Website Care ₹2,999/month**: updates, uptime checks, backups and WhatsApp support for your website.\n" +
+      "- **AI Agent Monitoring ₹4,999/month**: your chatbots and automations watched, fixed and tuned.\n" +
+      "- **Growth ₹6,999/month** and **Scale ₹14,999/month** cover the full growth system.\n" +
+      "- Monthly billing, cancel anytime. Subscribe in minutes on WhatsApp.",
+    links: links("pricing", "contact")
+  },
+  autopilot: {
+    message: "- **Patient Autopilot** for clinics and diagnostic centres, setup **₹24,999**: bookings, reminders and follow-ups on WhatsApp.\n" +
+      "- **Admission Autopilot** for coaching centres and schools, setup **₹24,999**: enquiries, fee reminders and follow-ups on autopilot.\n" +
+      "- **WhatsApp Sales Desk ₹19,999** for shops, restaurants and services: instant replies and order capture.\n" +
+      "- Fixed price, ROI-first: one recovered customer a month often pays for the setup.",
+    links: links("solutions", "contact")
+  },
+  referral: {
+    message: "- Refer a business to BrandiQue and earn **10% of the first project value**.\n" +
+      "- How it works: **1)** share your referral link, **2)** they start a project, **3)** you get paid.\n" +
+      "- No limit on how many businesses you refer.",
+    links: links("referral", "contact")
+  },
+  roi: {
+    message: "- The **ROI Calculator** shows how much money you lose every month from missed enquiries.\n" +
+      "- Enter your missed enquiries per day and your average deal value.\n" +
+      "- See the lost revenue instantly, and how automation could recover it.",
+    links: links("roi", "contact")
+  },
+  leadMagnet: {
+    message: "- The **Free Growth Audit** reviews your website, enquiries and follow-up, with practical fixes.\n" +
+      "- Ask here or on WhatsApp, and we follow up with your audit and next steps.\n" +
+      "- Free, no obligation.",
+    links: links("contact", "services")
+  },
   offTopic: {
     message: "- I'm focused on BrandiQue 🙂\n" +
       "- I can help with **websites**, **AI agents & automations** and **graphic design**.",
@@ -347,6 +382,11 @@ function matchIntent(raw) {
   const price = /\b(price|pricing|prices|cost|costs|charges?|rate|rates|how much|fee|fees|budget|rs\.?|₹|entha|enta|packages?)\b/i.test(t);
 
   if (/\b(bundles?|growth plan|scale plan|all[- ]in[- ]one)\b/.test(t)) return ANSWERS.bundles;
+  if (/\b(care plans?|website care|ai agent monitoring)\b/i.test(t)) return ANSWERS.carePlans;
+  if (/\b(autopilots?)\b/i.test(t)) return ANSWERS.autopilot;
+  if (/\b(referrals?|refer a|referring|refer and earn|commission)\b/i.test(t)) return ANSWERS.referral;
+  if (/\b(roi|return on investment|lost revenue|missed (enquiries?|enquiry|leads?|calls?))\b/i.test(t)) return ANSWERS.roi;
+  if (/\bfree\b.{0,20}\b(growth audit|audit|consultation|offer|trial)\b/i.test(t)) return ANSWERS.leadMagnet;
   if (/\b(memberships?|monthly|subscription|per month|retainer)\b/.test(t)) return ANSWERS.memberships;
   if (/\b(solutions?|industr(y|ies)|coaching|schools?|clinics?|hospitals?|restaurants?|shops?|admissions?|patients?|doctors?|retail)\b/.test(t)) return ANSWERS.solutions;
   if (/\b(audit)\b/.test(t)) return ANSWERS.audit;
@@ -387,6 +427,8 @@ function inferLinks(text) {
   if (/founder|about|mohan/.test(t)) add("about");
   if (/project|portfolio/.test(t)) add("projects");
   if (/industry|clinic|coaching|restaurant/.test(t)) add("solutions");
+  if (/referral|refer a|commission/.test(t)) add("referral");
+  if (/roi|lost revenue|missed enquir/.test(t)) add("roi");
   add("contact");
   return out.slice(0, 3);
 }
