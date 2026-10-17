@@ -122,9 +122,11 @@ function contextualAnswer(userText, messages, profile = {}) {
     return { message: "Nice to meet you, **" + name + "** 🙂 How can I help: a website, AI automation, design or a voice calling agent?", links: [] };
   }
   // Follow-up price question ("pricing entha?") right after a voice-agent question gets the voice plans.
-  if (/\b(price|pricing|prices|cost|charges?|rates?|how much|fees?|entha|enta|plans?|packages?)\b/i.test(text) && !matchIntentIsSpecific(text)) {
+  if (/\b(price|pricing|prices|cost|charges?|rates?|how much|fees?|entha|enta|plans?|packages?|differen\w*|compare|comparison|tedha|teda)\b/i.test(text) && !matchIntentIsSpecific(text)) {
     const prevUser = (Array.isArray(messages) ? messages : []).filter((m) => m?.role === "user").map((m) => String(m.content || "").trim()).filter((c) => c && c !== text).slice(-1)[0];
-    if (prevUser && isVoiceQuestion(prevUser.toLowerCase())) return ANSWERS.voicePricing;
+    if (prevUser && isVoiceQuestion(prevUser.toLowerCase())) {
+      return /\b(differen\w*|compare|comparison|tedha|teda)\b/i.test(text) ? ANSWERS.voiceDifferences : ANSWERS.voicePricing;
+    }
   }
   return null;
 }
