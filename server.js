@@ -723,6 +723,10 @@ app.post("/api/chat", apiHourlyLimiter, apiLimiter, async (req, res) => {
 
     // Short questions get the verified answer instantly; longer or personalised questions
     // get a tailored AI answer grounded in the same knowledge, falling back to the verified one.
+    // Voice-agent plans and prices are always answered from the verified text, whatever the length,
+    // so a model can never paraphrase a price or feature wrongly.
+    const VOICE_ANSWERS = [ANSWERS.voice, ANSWERS.voicePricing, ANSWERS.voiceDifferences, ANSWERS.voiceStarter, ANSWERS.voiceGrowth, ANSWERS.voicePremium, ANSWERS.voiceVsTelecaller];
+    if (direct && VOICE_ANSWERS.includes(direct)) return send(direct);
     if (direct && (!detailed || direct.links.length === 0)) return send(direct);
 
     try {
